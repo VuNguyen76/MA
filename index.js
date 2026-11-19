@@ -750,6 +750,9 @@ function updatePreviews() {
       <small>${p.removed ? 'Đã tách nền' : 'Ảnh gốc'}</small>
     </div>
   `).join('');
+  if ($('aiAutoTagBtn')) {
+    $('aiAutoTagBtn').classList.toggle('hidden', photos.length === 0);
+  }
 }
 
 let rawUploadedFiles = [];
@@ -855,6 +858,7 @@ function closeModal() {
   photoGeneration++;
   processing = false;
   $('dialogBack').classList.add('hidden');
+  if ($('aiAutoTagBtn')) $('aiAutoTagBtn').classList.add('hidden');
 }
 
 $('photoInput').onchange = async e => {
@@ -1176,10 +1180,282 @@ if ($('syncCloudBtn')) {
 }
 
 // =============================================================================
-// 12. KHỞI CHẠY ỨNG DỤNG
+// 12. GEMINI AI STUDIO QUA PUTER.JS (KHÔNG CẦN API KEY, XIN QUYỀN TRÊN WEB)
+// =============================================================================
+const MODEL_PHOTO_KEY = 'mai-anh-model-photo-v1';
+let modelPhotoData = localStorage.getItem(MODEL_PHOTO_KEY) || '';
+let lastAiImgElement = null;
+
+function refreshModelPhotoChip() {
+  const lbl = $('modelPhotoLabel');
+  const txt = $('modelPhotoText');
+  if (!lbl || !txt) return;
+  if (modelPhotoData) {
+    lbl.classList.add('has-photo');
+    txt.textContent = '👤 Đã có ảnh mẫu ✓';
+  } else {
+    lbl.classList.remove('has-photo');
+    txt.textContent = '👤 Ảnh người mẫu';
+  }
+}
+
+function getPuterAi() {
+  if (!window.puter || !window.puter.ai) {
+    throw new Error('Chưa tải được Puter AI, hãy kiểm tra kết nối mạng và tải lại trang');
+  }
+  return window.puter.ai;
+}
+
+function extractChatText(res) {
+  if (!res) return '';
+  if (typeof res === 'string') return res;
+  const content = res.message?.content ?? res.text ?? res;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content.map(p => (typeof p === 'string' ? p : p?.text || '')).join('\n');
+  }
+  return String(content);
+}
+
+function parseJsonBlock(rawText) {
+  const cleaned = String(rawText || '').replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  return JSON.parse(match ? match[0] : cleaned);
+}
+
+async function callGeminiChat(prompt, imageInput = null) {
+  const ai = getPuterAi();
+  const models = ['google/gemini-2.5-flash', 'google/gemini-3.8-flash'];
+  let lastErr;
+  for (const model of models) {
+    try {
+      const res = imageInput
+        ? await ai.chat(prompt, imageInput, { model })
+        : await ai.chat(prompt, { model });
+      return extractChatText(res);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('Không gọi được Gemini AI');
+}
+
+async function imageElToDataUrl(imgEl) {
+  if (imgEl.src && imgEl.src.startsWith('data:image/')) return imgEl.src;
+  const res = await fetch(imgEl.src);
+  const blob = await res.blob();
+  return await fileToDataURL(blob);
+}
+
+// 12A. Chọn ảnh dáng người mẫu (tùy chọn) để Gemini mặc thử đồ thật
+if ($('modelPhotoInput')) {
+  $('modelPhotoInput').onchange = async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      modelPhotoData = await shrink(f);
+      try {
+        localStorage.setItem(MODEL_PHOTO_KEY, modelPhotoData);
+      } catch (_) {}
+      refreshModelPhotoChip();
+      toast('Đã lưu ảnh người mẫu để Gemini mặc thử 👤');
+    } catch (err) {
+      toast('Không đọc được ảnh mẫu: ' + err.message);
+    } finally {
+      e.target.value = '';
+    }
+  };
+}
+
+// 12B. Gemini Vision tự điền tên, loại, màu, dịp mặc khi thêm đồ mới
+if ($('aiAutoTagBtn')) {
+  $('aiAutoTagBtn').onclick = async () => {
+    if (!photos.length) return toast('Hãy chọn ảnh món đồ trước nhé!');
+    const btn = $('aiAutoTagBtn');
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '✨ Gemini đang phân tích ảnh...';
+    try {
+      const prompt = `Bạn là stylist thời trang. Nhìn ảnh trang phục này và trả về DUY NHẤT 1 JSON hợp lệ (không giải thích thêm):
+{"name":"Tên ngắn gọn tiếng Việt (VD: Áo sơ mi lụa trắng)","cat":"Chọn đúng 1 trong: ${CATS.join(', ')}","color":"Màu chủ đạo tiếng Việt","season":"Chọn đúng 1 trong: Đi làm, Đi chơi dạo phố, Dự tiệc, Du lịch, Mặc ở nhà","note":"Gợi ý phối đồ ngắn dưới 12 từ"}`;
+      const raw = await callGeminiChat(prompt, photos[0].original || photos[0].photo);
+      const info = parseJsonBlock(raw);
+      if (info.name) $('itemName').value = String(info.name).slice(0, 100);
+      if (info.cat && CATS.includes(info.cat)) $('itemCat').value = info.cat;
+      if (info.color) $('itemColor').value = String(info.color).slice(0, 50);
+      if (info.season) {
+        const opts = [...$('itemSeason').options].map(o => o.value || o.text);
+        if (opts.includes(info.season)) $('itemSeason').value = info.season;
+      }
+      if (info.note) $('itemNote').value = String(info.note).slice(0, 250);
+      toast('Gemini đã tự điền thông tin món đồ ✨');
+    } catch (err) {
+      toast('Gemini chưa phân tích được: ' + (err?.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  };
+}
+
+// 12C. Gemini AI Stylist tự chọn set đồ hợp gu từ tủ đồ hiện có
+if ($('aiStylistBtn')) {
+  $('aiStylistBtn').onclick = async () => {
+    if (items.length < 2) return toast('Cần ít nhất 2 món đồ trong tủ để AI phối nhé!');
+    const btn = $('aiStylistBtn');
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Đang phối...';
+    try {
+      const catalog = items.map(i => ({
+        id: i.id,
+        name: i.name,
+        cat: i.cat,
+        color: i.color || '',
+        season: i.season || ''
+      }));
+      const prompt = `Bạn là stylist thời trang cao cấp. Từ tủ đồ JSON sau:
+${JSON.stringify(catalog)}
+Hãy chọn 1 set outfit đẹp nhất (2 đến 4 món khác loại; nếu chọn "Váy liền" thì không chọn "Quần"/"Chân váy").
+Trả về DUY NHẤT 1 JSON hợp lệ:
+{"itemIds":["id1","id2"],"title":"Tên outfit tiếng Việt ngắn gọn","reason":"Nhận xét phối đồ 1 câu ngắn tiếng Việt"}`;
+      const raw = await callGeminiChat(prompt);
+      const plan = parseJsonBlock(raw);
+      const picked = (Array.isArray(plan.itemIds) ? plan.itemIds : [])
+        .map(id => items.find(x => x.id === id))
+        .filter(Boolean);
+      if (!picked.length) throw new Error('AI chưa chọn được món phù hợp');
+
+      board = {};
+      for (const it of picked) {
+        board[it.cat] = it.id;
+      }
+      if (plan.title) $('lookName').value = String(plan.title).slice(0, 100);
+      renderBoard();
+      mixOutfit();
+
+      const noteEl = $('aiNote');
+      if (noteEl && plan.reason) {
+        noteEl.textContent = '✨ Gemini Stylist: ' + plan.reason;
+        noteEl.classList.remove('hidden');
+      }
+      toast('Gemini đã phối xong 1 set đồ cho bạn ✨');
+    } catch (err) {
+      toast('AI gợi ý thất bại: ' + (err?.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  };
+}
+
+// 12D. Gemini Image (Nano Banana) tạo ảnh Lookbook / Mặc thử đồ thật
+if ($('aiGenerateBtn')) {
+  $('aiGenerateBtn').onclick = async () => {
+    const selected = selectedPieces();
+    if (!selected.length) return toast('Hãy chọn ít nhất 1 món đồ trên bảng để tạo ảnh AI!');
+
+    const btn = $('aiGenerateBtn');
+    const box = $('aiResultBox');
+    const stage = $('aiResultStage');
+    btn.disabled = true;
+    box.classList.remove('hidden');
+    stage.innerHTML = '✨ Gemini đang tạo ảnh Lookbook cho set đồ của bạn (khoảng 10–25 giây)...';
+
+    try {
+      const ai = getPuterAi();
+      const inputImages = [];
+      if (modelPhotoData) inputImages.push(modelPhotoData);
+      for (const s of selected) {
+        if (s.it.photo) inputImages.push(s.it.photo);
+      }
+
+      const garmentDesc = selected
+        .map(s => `${s.cat}: ${s.it.name}${s.it.color ? ' (' + s.it.color + ')' : ''}`)
+        .join(', ');
+
+      const prompt = modelPhotoData
+        ? `Realistic full-body fashion try-on photograph of the exact person from the first reference image wearing the exact outfit from the remaining garment images (${garmentDesc}). Preserve the person's exact face, hairstyle, body proportions, and every garment's exact color, pattern, cut, and fabric texture. Natural soft daylight, clean minimalist warm cream studio background, high-fashion Kinfolk editorial lookbook photography.`
+        : `High-fashion Kinfolk editorial full-body lookbook photograph of a stylish young Vietnamese female model wearing the exact clothing items shown in the reference images (${garmentDesc}). Preserve every garment's exact color, pattern, silhouette, and fabric detail accurately. Soft natural window light, clean minimalist warm cream linen studio backdrop, realistic fashion photography.`;
+
+      const imgModels = ['gemini-3.1-flash-image', 'gemini-nano-banana-2.1', 'gemini-3-pro-image'];
+      let imgEl = null;
+      let lastErr;
+
+      for (const model of imgModels) {
+        try {
+          imgEl = await ai.txt2img(prompt, {
+            model,
+            input_images: inputImages,
+            ratio: { w: 3, h: 4 }
+          });
+          if (imgEl) break;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+
+      if (!imgEl) throw lastErr || new Error('Không tạo được ảnh từ Gemini');
+
+      lastAiImgElement = imgEl;
+      imgEl.alt = 'Ảnh Lookbook tạo bởi Gemini AI';
+      stage.innerHTML = '';
+      stage.appendChild(imgEl);
+      toast('Gemini đã tạo xong ảnh Lookbook ✨');
+    } catch (err) {
+      stage.innerHTML = '⚠️ ' + esc(err?.message || String(err));
+      toast('Không tạo được ảnh AI: ' + (err?.message || err));
+    } finally {
+      btn.disabled = false;
+    }
+  };
+}
+
+if ($('closeAiResult')) {
+  $('closeAiResult').onclick = () => $('aiResultBox')?.classList.add('hidden');
+}
+
+if ($('downloadAiImg')) {
+  $('downloadAiImg').onclick = async () => {
+    if (!lastAiImgElement) return;
+    try {
+      const dataUrl = await imageElToDataUrl(lastAiImgElement);
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `mai-anh-lookbook-${Date.now()}.png`;
+      a.click();
+      toast('Đã tải ảnh Lookbook về máy ⬇');
+    } catch (err) {
+      toast('Lỗi tải ảnh: ' + err.message);
+    }
+  };
+}
+
+if ($('saveAiImgDrive')) {
+  $('saveAiImgDrive').onclick = async () => {
+    if (!lastAiImgElement) return;
+    const btn = $('saveAiImgDrive');
+    btn.disabled = true;
+    try {
+      toast('Đang lưu ảnh Lookbook lên Google Drive ☁...');
+      const dataUrl = await imageElToDataUrl(lastAiImgElement);
+      const lookTitle = $('lookName')?.value.trim() || 'Lookbook-AI';
+      await uploadToAppsScript(dataUrl, `${lookTitle}-${Date.now()}.png`);
+      toast('Đã lưu ảnh Lookbook vào Google Drive ☁✨');
+    } catch (err) {
+      toast('Lưu Drive thất bại: ' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  };
+}
+
+// =============================================================================
+// 13. KHỞI CHẠY ỨNG DỤNG
 // =============================================================================
 (async () => {
   try {
+    refreshModelPhotoChip();
     $('itemCat').innerHTML = CATS.map(c => `<option>${c}</option>`).join('');
     db = await openDB();
     await reload();

@@ -22,6 +22,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="index.css" />
+  <!-- Puter.js v2: Gemini AI miễn phí trên trình duyệt (không cần API key) -->
+  <script src="https://js.puter.com/v2/"></script>
 </head>
 <body>
   <!-- Ambient Lighting Layer -->
@@ -93,8 +95,13 @@
         <div class="bezel-core section-inner">
           <div class="section-toolbar">
             <h2 class="section-heading">Today's Outfit</h2>
-            <button type="button" class="btn-subtle" id="clearBoard">Làm mới</button>
+            <div class="toolbar-actions">
+              <button type="button" class="btn-subtle" id="aiStylistBtn" title="Gemini tự phối đồ từ tủ">✨ AI Gợi ý</button>
+              <button type="button" class="btn-subtle" id="clearBoard">Làm mới</button>
+            </div>
           </div>
+
+          <div id="aiNote" class="ai-note hidden" role="status" aria-live="polite"></div>
 
           <!-- ARTBOARD FLAT-LAY STUDIO -->
           <div class="artboard-card">
@@ -111,6 +118,29 @@
                 <span>Mix đồ ngay</span>
                 <span class="btn-bubble">✦</span>
               </button>
+              <div class="ai-gen-row">
+                <label class="ai-model-chip" id="modelPhotoLabel" title="Chọn ảnh dáng người để AI mặc thử">
+                  <input type="file" id="modelPhotoInput" accept="image/*" hidden />
+                  <span id="modelPhotoText">👤 Ảnh người mẫu</span>
+                </label>
+                <button type="button" class="btn-ai" id="aiGenerateBtn">
+                  <span>Tạo ảnh Gemini AI</span>
+                  <span class="btn-bubble">✨</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Kết quả ảnh sinh bởi Gemini -->
+            <div id="aiResultBox" class="ai-result-box hidden">
+              <div class="ai-result-head">
+                <span class="artboard-label">Gemini Lookbook</span>
+                <button type="button" class="btn-close-sm" id="closeAiResult" aria-label="Đóng">✕</button>
+              </div>
+              <div id="aiResultStage" class="ai-result-stage"></div>
+              <div class="ai-result-actions">
+                <button type="button" class="btn-subtle" id="downloadAiImg">⬇ Tải ảnh</button>
+                <button type="button" class="btn-accent" id="saveAiImgDrive">☁️ Lưu vào Drive</button>
+              </div>
             </div>
           </div>
 
@@ -186,6 +216,10 @@
         </div>
 
         <div id="previews" class="previews"></div>
+
+        <div class="ai-autotag-row">
+          <button type="button" class="btn-subtle hidden" id="aiAutoTagBtn">✨ Gemini tự điền thông tin</button>
+        </div>
 
         <!-- Thông tin món đồ -->
         <div class="formgrid">
