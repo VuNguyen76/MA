@@ -1179,7 +1179,7 @@ if ($('aiAutoTagBtn')) {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>Đang phân tích ảnh...</span>';
     try {
       const prompt = `Bạn là stylist thời trang. Nhìn ảnh trang phục này và trả về DUY NHẤT 1 JSON hợp lệ (không giải thích thêm):
-{"name":"Tên ngắn gọn tiếng Việt (VD: Áo sơ mi lụa trắng)","cat":"Chọn đúng 1 trong: ${CATS.join(', ')}","color":"Màu chủ đạo tiếng Việt","season":"Chọn đúng 1 trong: Đi làm, Đi chơi dạo phố, Dự tiệc, Du lịch, Mặc ở nhà","note":"Gợi ý phối đồ ngắn dưới 12 từ"}`;
+{"name":"Tên ngắn gọn tiếng Việt (VD: Áo sơ mi lụa trắng)","cat":"Chọn đúng 1 trong: ${CATS.join(', ')}","color":"Màu chủ đạo tiếng Việt","season":"Chọn đúng 1 trong: Đi làm, Đi chơi dạo phố, Dự tiệc, Du lịch, Đi tập, Mặc ở nhà","note":"Gợi ý phối đồ ngắn dưới 12 từ"}`;
       const raw = await callMuseChat(prompt, photos[0].original || photos[0].photo);
       const info = parseJsonBlock(raw);
       if (info.name) $('itemName').value = String(info.name).slice(0, 100);
