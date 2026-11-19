@@ -216,7 +216,24 @@ async function fetchCloudDatabase(showToast = false) {
     }
 
     if (data && Array.isArray(data.items)) {
+      const localItems = await req(tx('items').getAll());
+      const localByFileId = new Map(localItems.filter(x => x.driveFileId).map(x => [x.driveFileId, x]));
+      const deletedSet = new Set(Array.isArray(data.deletedFileIds) ? data.deletedFileIds : []);
+
+      // Xóa các món đã bị xóa từ thiết bị khác
+      for (const local of localItems) {
+        if (local.driveFileId && deletedSet.has(local.driveFileId)) {
+          await req(tx('items', 'readwrite').delete(local.id));
+        }
+      }
+
       for (const item of data.items) {
+        if (item.driveFileId && deletedSet.has(item.driveFileId)) continue;
+        const existingByFile = item.driveFileId ? localByFileId.get(item.driveFileId) : null;
+        if (existingByFile && existingByFile.id !== item.id) {
+          if (item.id.startsWith('drive-')) continue;
+          await req(tx('items', 'readwrite').delete(existingByFile.id));
+        }
         await req(tx('items', 'readwrite').put(item));
       }
       if (Array.isArray(data.looks)) {
@@ -243,7 +260,7 @@ async function fetchCloudDatabase(showToast = false) {
   return false;
 }
 
-async function syncDatabaseToDrive(showToast = false) {
+async function syncDatabaseToDrive(showToast = false, deletedFileIds = []) {
   if (!appsScriptUrl) return;
   const statusEl = $('syncStatusText');
   if (statusEl) statusEl.textContent = 'Đang lưu...';
@@ -252,10 +269,20 @@ async function syncDatabaseToDrive(showToast = false) {
     const allItems = await req(tx('items').getAll());
     const allLooks = await req(tx('looks').getAll());
 
+    // Bỏ trường original base64 nặng trước khi ghi vào closet-db.json để đồng bộ nhanh & không lỗi quá dung lượng
+    const lightItems = allItems.map(item => {
+      const copy = { ...item };
+      if (copy.original && copy.original.startsWith('data:image/')) {
+        delete copy.original;
+      }
+      return copy;
+    });
+
     const payload = {
       action: 'sync_db',
-      items: allItems,
-      looks: allLooks
+      items: lightItems,
+      looks: allLooks,
+      deletedFileIds
     };
 
     const res = await fetch(appsScriptUrl, {
@@ -506,7 +533,7 @@ async function deleteItem(id) {
     if (board[k] === id) delete board[k];
   }
   await reload();
-  syncDatabaseToDrive();
+  syncDatabaseToDrive(false, i.driveFileId ? [i.driveFileId] : []);
 }
 
 // =============================================================================
