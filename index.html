@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Mai Anh’s Green Closet — Fashion Illustration</title><style>
+:root{--bg:#f4f8f1;--panel:#fff;--ink:#24392b;--muted:#6d806f;--line:#dbe7d8;--rose:#35734e;--soft:#e8f3e6;--shadow:0 10px 32px #244a2e0d}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.42;cursor:not-allowed}.shell{max-width:1440px;margin:auto;padding:28px 30px 60px}.head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px}.eyebrow{color:var(--rose);font-size:11px;letter-spacing:.2em;font-weight:800;text-transform:uppercase}h1{font-family:Georgia,serif;font-size:clamp(28px,4vw,43px);font-weight:500;margin:2px 0}h2{font:500 25px Georgia,serif;margin:0}p{margin:5px 0;color:var(--muted)}.pill{border:1px solid var(--line);background:#fff;border-radius:100px;padding:9px 16px}.primary{border:0;background:var(--rose);color:white;border-radius:12px;padding:11px 17px;font-weight:700}.ghost{background:white;border:1px solid var(--line);border-radius:11px;padding:10px 13px;color:var(--ink)}.btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.tabs{display:flex;gap:8px;margin:0 0 19px;flex-wrap:wrap}.tab{border:1px solid var(--line);padding:10px 19px;background:#fff;border-radius:12px;color:var(--muted)}.tab.active{background:#244b32;color:white;border-color:#244b32}.layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(340px,.85fr);gap:20px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:21px;box-shadow:var(--shadow)}.sectionhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}.chip{border:1px solid var(--line);border-radius:20px;padding:7px 12px;background:#fff;color:#4c6953}.chip.active{background:var(--soft);border-color:#b9d9bd;color:#286841;font-weight:700}.search{border:1px solid var(--line);border-radius:10px;padding:10px 13px;min-width:150px;max-width:230px;background:#fff}.closet{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:12px;max-height:670px;overflow:auto;padding:2px}.item{border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;position:relative;min-width:0}.item img{width:100%;height:155px;object-fit:contain;background:#f0f6ec;display:block}.info{padding:9px}.name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:650}.sub{font-size:12px;color:var(--muted)}.actions{display:flex;gap:5px;margin-top:8px}.small{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 8px;color:#456d51;font-size:12px}.small.add{flex:1;background:#e8f3e6;border-color:#c5e1c5;color:#286841;font-weight:700}.empty{grid-column:1/-1;padding:50px 15px;text-align:center;border:1px dashed #bfd5bf;border-radius:13px;color:var(--muted)}.board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:15px 0}.slot{min-height:170px;border:1px dashed #bfd5bf;border-radius:15px;background:#f6faf4;position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden}.slot.filled{background:#fff;border-style:solid;border-color:var(--line)}.slot img{width:100%;height:160px;object-fit:contain}.slotlabel{position:absolute;left:8px;top:7px;background:#ffffffd9;border-radius:7px;padding:2px 7px;color:#456f51;font-size:11px;font-weight:700;z-index:1}.slotremove{position:absolute;right:7px;top:7px;border:0;background:#fff;border-radius:50%;height:27px;width:27px;z-index:2}.slotcaption{font-size:11px;color:#687e6b;text-align:center;padding:0 5px 7px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hint{text-align:center;font-size:12px;color:var(--muted)}.lookmeta{display:flex;gap:7px;margin:12px 0}.lookmeta input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px}.savedgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:15px}.lookcard{border:1px solid var(--line);border-radius:15px;padding:12px}.lookpics{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#f1f7f0;border-radius:10px;padding:6px;margin-bottom:10px}.lookpics img{width:100%;height:104px;object-fit:contain}.lookpics .placeholder{height:104px;display:grid;place-items:center;color:#aaa;font-size:11px}.lookname{font-weight:750;margin:3px 0}.muted{color:var(--muted);font-size:12px}.hidden{display:none!important}.dialogback{position:fixed;inset:0;background:#1c1317a8;z-index:10;display:grid;place-items:center;padding:15px}.dialog{background:white;border-radius:20px;padding:25px;width:min(530px,100%);max-height:93vh;overflow:auto}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:5px;margin:10px 0}.field label{font-weight:600;font-size:12px}.field input,.field select{padding:10px;border:1px solid #c9d9ca;border-radius:10px;min-width:0;background:white}.previews{display:flex;gap:9px;overflow:auto;margin:14px 0}.previews img{width:78px;height:85px;object-fit:contain;background:#f0f6ec;border-radius:9px}.footer{margin-top:18px;color:var(--muted);font-size:12px;line-height:1.8}.topnote{background:#ebf5e9;border-radius:13px;padding:11px 14px;font-size:12px;color:#365e40;margin-bottom:17px}.stat{color:#437651;font-size:13px}.toast{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);background:#244b32;color:#fff;padding:11px 20px;border-radius:13px;z-index:22;box-shadow:var(--shadow)}.dropdrag{outline:3px solid #6da47a!important;background:#eff9ec!important}@media(max-width:890px){.layout{grid-template-columns:1fr}.shell{padding:17px 13px 40px}.panel{padding:15px}.closet{max-height:none}.board{grid-template-columns:repeat(3,minmax(0,1fr))}.slot{min-height:145px}.slot img{height:126px}}@media(max-width:480px){.board{grid-template-columns:repeat(2,1fr)}.closet{grid-template-columns:repeat(2,minmax(0,1fr))}.search{max-width:100%;width:100%}.head{align-items:start}.formgrid{grid-template-columns:1fr}}
+
+/* Mix & Match flat-lay studio */
+.mixstudio{background:linear-gradient(145deg,#eff6e8,#e7f1e4);border:1px solid #d5e7d1;border-radius:20px;padding:15px;margin:15px 0 18px}
+.mixhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.mixhead h3{font:500 23px Georgia,serif;margin:0}.mixhead p{font-size:12px;margin:5px 0 0}.mixcanvas{margin-top:13px;position:relative;min-height:380px;aspect-ratio:1/1;background:#fbfcf8;background-image:radial-gradient(#d9e6d4 0.8px,transparent 0.8px);background-size:19px 19px;border:1px solid #dbe8d6;border-radius:16px;overflow:hidden;isolation:isolate}
+.mixcanvas::before{content:'MAI ANH · STYLE BOARD';position:absolute;top:12px;left:14px;letter-spacing:.17em;font-size:9px;font-weight:800;color:#96ae96}.mixcanvas.empty::after{content:'Chọn các món bên dưới rồi bấm “Mix đồ” ♡';position:absolute;inset:28px;display:grid;place-items:center;color:#78917e;text-align:center;font:italic 18px Georgia,serif}.mixpiece{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:7px 5px;transition:top .36s ease,left .36s ease,transform .36s ease;animation:mixAppear .4s ease both}.mixpiece img{width:100%;height:calc(100% - 23px);object-fit:contain;filter:drop-shadow(0 6px 7px #37573a1c)}.mixpiece figcaption{background:#ffffffdb;border:1px solid #e2eadf;border-radius:99px;color:#4d7055;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10px;padding:2px 8px}.mixpiece{margin:0}.mixpiece:hover{z-index:8!important;transform:rotate(0deg) scale(1.06)!important}.mix-action{margin-top:12px;display:flex;gap:8px}.mix-action .primary{flex:1;font-size:15px}.mixnote{margin-top:9px;font-size:11px;color:#6c806c;line-height:1.5}.mixhint{font-size:12px;text-align:center;color:#66856b;margin-top:10px}.signoff{text-align:center;margin-top:24px;padding-top:15px;border-top:1px solid var(--line);font:italic 16px Georgia,serif;color:#32734d;letter-spacing:.04em}@keyframes mixAppear{from{opacity:0;transform:translateY(16px) scale(.9)}to{opacity:1}}@media(max-width:600px){.mixcanvas{min-height:300px}}@media(max-width:380px){.mixcanvas{min-height:265px}}
+.bg-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:#286841;font-weight:650;margin:10px 0 4px}.bg-toggle input{width:17px;height:17px;accent-color:#35734e}.bg-status{font-size:12px;color:#456d51;min-height:18px;margin:6px 0}.previews{flex-wrap:wrap}.preview-tile{display:grid;gap:4px;justify-items:center}.preview-tile img{background-color:#f4f7f1;background-image:linear-gradient(45deg,#e4eae1 25%,transparent 25%),linear-gradient(-45deg,#e4eae1 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4eae1 75%),linear-gradient(-45deg,transparent 75%,#e4eae1 75%);background-size:14px 14px;background-position:0 0,0 7px,7px -7px,-7px 0}.preview-tile small{font-size:10px;color:#59745d}button:disabled{cursor:wait}
+.cloudbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #cbdccb;border-radius:16px;padding:12px 15px;margin:0 0 14px;box-shadow:var(--shadow)}
+.cloudstatus{flex:1;min-width:170px;font-size:12px;color:#38694b}.cloudstatus strong{display:block;color:#254c32;font-size:13px}.cloudbtn{background:#e8f3e6;border:1px solid #bcd7bf;border-radius:10px;color:#285c3a;padding:8px 12px;font-weight:700}.cloud-panel{border:1px solid #cbdccb;background:#f7fbf5;padding:15px;border-radius:15px;margin-bottom:15px}.cloud-panel h3{margin:0 0 4px;font:500 21px Georgia,serif}.cloud-panel textarea{font:12px/1.5 monospace;width:100%;height:125px;border:1px solid #b9d5bc;border-radius:11px;padding:10px;background:#fff;resize:vertical}.cloud-panel code{font-size:12px}.cloud-panel details{margin-top:8px}.cloud-panel ol{margin:8px 0 10px;padding-left:22px}.cloud-panel li{margin-bottom:5px}.cloud-panel a{color:#286b44}.cloud-progress{display:block;color:#a55b27;font-size:12px;margin-top:5px}.cloud-note{font-size:12px;color:#5d755f}
+</style></head><body>
+<div class="shell"><header class="head"><div><div class="eyebrow">YOUR GREEN STYLE STUDIO ✿</div><h1>Mai Anh’s Green Closet</h1><p>Chụp đồ · Cất vào tủ · Mix & match mỗi ngày ✨</p></div><div class="btnrow"><span class="pill" id="count">0 món đồ</span><button class="ghost" id="backupBtn">⬇ Sao lưu</button><button class="ghost" id="restoreBtn">⬆ Khôi phục</button><input type="file" id="restoreInput" accept="application/json" hidden><button class="primary" id="uploadBtn">＋ Thêm quần áo</button></div></header>
+<div class="topnote">💡 Ảnh và outfit được lưu trên máy. Khi kết nối Google Sync thành công, dữ liệu cũng được đồng bộ vào tài khoản cloud riêng của m. Hãy bấm <b>Sao lưu</b> định kỳ để không mất tủ đồ khi xóa dữ liệu trình duyệt hoặc đổi máy.</div>
+<section class="cloudbar" aria-label="Đồng bộ đám mây"><span style="font-size:23px">☁️</span><div class="cloudstatus"><strong id="cloudLabel">Tủ đồ đang lưu trên máy</strong><span id="cloudDetail">Bật Google Sync để dùng trên nhiều thiết bị.</span><span id="cloudProgress" class="cloud-progress"></span></div><button class="cloudbtn" id="cloudConnect">☁ Kết nối Google</button><button class="ghost hidden" id="cloudLogout">Đăng xuất</button></section>
+<section id="cloudPanel" class="cloud-panel hidden"><div class="sectionhead"><div><h3>Thiết lập Google Sync một lần 🌿</h3><p>Thiết lập xong, m mở cùng một đường link trên mọi thiết bị và đăng nhập Google.</p></div><button class="ghost" id="cloudClose">✕</button></div><p class="cloud-note">Chưa có ứng dụng online? T cần m tạo một dự án Firebase và đăng ứng dụng lên web. Đây là phần cần tài khoản của m nên t không thể tự hoàn tất thay.</p><details open><summary><b>Các bước chuẩn bị (chỉ làm một lần)</b></summary><ol><li>Mở <a target="_blank" rel="noopener" href="https://console.firebase.google.com/">Firebase Console</a>, tạo project miễn phí và thêm một Web app (biểu tượng &lt;/&gt;). Sao chép <b>firebaseConfig</b>.</li><li>Trong Authentication → Sign-in method, bật <b>Google</b>.</li><li>Trong Firestore Database, tạo database chế độ production và dán nội dung file <code>firestore.rules</code> vào mục Rules, rồi Publish. Không bật quy tắc cho phép mọi người đọc/ghi.</li><li>Dán <b>firebaseConfig</b> vào ô dưới, nhấn <b>Tạo file web đã kết nối</b>. Đưa file <code>index.html</code> đã tạo lên dịch vụ hosting HTTPS (ví dụ Netlify Drop). Trong Authentication → Settings → Authorized domains, thêm tên miền của trang web đó.</li><li>Từ nay dùng đường link web đó ở máy tính và điện thoại, bấm <b>Kết nối Google</b> và đăng nhập cùng một tài khoản.</li></ol></details><label for="cloudConfig"><b>Firebase config từ dự án của m</b></label><textarea id="cloudConfig" placeholder='Dán object firebaseConfig, ví dụ: const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." };'></textarea><div class="btnrow" style="margin-top:10px"><button class="primary" id="cloudBuild">Tạo file web đã kết nối</button><button class="ghost" id="cloudApply">Kết nối thử trên trang này</button></div><p id="cloudSetupInfo" class="cloud-note"></p></section>
+<nav class="tabs"><button class="tab active" data-tab="studio">✿ Tủ đồ & Phối đồ</button><button class="tab" data-tab="saved">♡ Outfit đã lưu <span id="savedCount"></span></button></nav>
+<div id="studio" class="layout"><section class="panel"><div class="sectionhead"><div><h2>Tủ đồ của tớ</h2><p>Chọn “Phối” để đưa món đồ vào outfit bên cạnh.</p></div><input id="search" class="search" placeholder="🔎 Tìm tên, màu, ghi chú..."></div><div id="filters" class="filters"></div><div id="closet" class="closet"></div></section>
+<aside class="panel"><div class="sectionhead"><div><h2>Today's outfit ♡</h2><p>Bảng phối đồ của m</p></div><button class="ghost" id="clearBoard">Làm mới</button></div><div class="hint">Kéo ảnh từ tủ đồ vào ô tương ứng, hoặc bấm “Phối”.</div><div class="mixstudio"><div class="mixhead"><div><h3>Mix & Match Studio ✿</h3><p>Một góc flat lay để m nhìn cả bộ đồ cạnh nhau.</p></div><span class="pill" id="mixCount">0 món</span></div><div id="mixCanvas" class="mixcanvas empty" aria-live="polite" aria-label="Bảng ảnh outfit đã phối"></div><div class="mix-action"><button type="button" class="primary" id="mixButton">✦ Mix đồ ngay</button></div><div class="mixhint">Chọn đồ trong tủ → bấm Mix đồ → xem chúng tự xếp thành một set.</div><div class="mixnote">Dùng ảnh thật của m để so màu, kiểu dáng và tổng thể. Đây là bảng phối ảnh, không xác định được size hay độ vừa khi mặc thật. Tool tự tách nền ảnh khi m thêm đồ (cần internet lần đầu).</div></div><div class="hint">Các món đã chọn (có thể thay hoặc bỏ từng món):</div><div class="board" id="board"></div><div class="lookmeta"><input id="lookName" placeholder="Đặt tên: Đi cà phê cuối tuần..." maxlength="100"></div><button class="primary" id="saveLook" style="width:100%">♡ Lưu outfit này</button><div class="footer">Mẹo: M có thể phối áo + quần, hoặc váy liền + giày + túi. Ô nào không cần thì cứ để trống nha.</div></aside></div>
+<section id="saved" class="panel hidden"><div class="sectionhead"><div><h2>Outfit đã lưu</h2><p>Bộ nào đẹp là cất lại, lần sau mở ra mặc ngay!</p></div></div><div id="savedGrid" class="savedgrid"></div></section>
+<div class="footer">My Little Closet · Tách nền AI cần mạng · Mix đồ vẫn dùng offline · Ảnh có thể thêm hàng loạt · Lưu tủ đồ trên thiết bị của m</div><div class="signoff">created by Mai Anh</div></div>
+<div id="dialogBack" class="dialogback hidden"><div class="dialog" role="dialog" aria-modal="true"><div class="sectionhead"><h2 id="dialogTitle">Thêm quần áo</h2><button class="ghost" id="closeDialog">✕</button></div><div class="field" id="fileField"><label>Ảnh đồ (có thể chọn nhiều ảnh một lúc)</label><input id="photoInput" type="file" accept="image/*" multiple><small class="muted">Ảnh rõ nét, ít vật che sẽ cho kết quả tốt nhất. AI xử lý ngay trên thiết bị; cần kết nối mạng để tải mô hình tách nền.</small><label class="bg-toggle"><input type="checkbox" id="autoRemove" checked> ✨ Tự tách nền ảnh bằng AI (mặc định bật)</label><div id="bgStatus" class="bg-status" role="status" aria-live="polite"></div><button type="button" id="restoreOriginal" class="ghost hidden">↩ Trở lại ảnh gốc của món này</button></div><div id="previews" class="previews"></div><div class="formgrid"><div class="field"><label for="itemName">Tên món đồ</label><input id="itemName" maxlength="100" placeholder="VD: Áo sơ mi trắng"></div><div class="field"><label for="itemCat">Loại</label><select id="itemCat"></select></div><div class="field"><label for="itemColor">Màu sắc</label><input id="itemColor" maxlength="50" placeholder="Trắng, kem..."></div><div class="field"><label for="itemSeason">Dịp mặc</label><select id="itemSeason"><option value="">Tất cả</option><option>Đi làm</option><option>Đi chơi</option><option>Đi tiệc</option><option>Du lịch</option><option>Ở nhà</option></select></div></div><div class="field"><label>Ghi chú</label><input id="itemNote" maxlength="250" placeholder="Form rộng, hợp quần jeans..."></div><div class="btnrow" style="justify-content:flex-end;margin-top:18px"><button class="ghost" id="cancelDialog">Hủy</button><button class="primary" id="submitItem">Cất vào tủ ♡</button></div></div></div><div id="toast" class="toast hidden"></div>
+<script>
+'use strict';
+const CATS=['Áo','Quần','Chân váy','Váy liền','Áo khoác','Giày dép','Túi xách','Phụ kiện'];
+const SLOTS=['Áo','Quần','Chân váy','Váy liền','Áo khoác','Giày dép','Túi xách','Phụ kiện'];
+const $=id=>document.getElementById(id);let db,items=[],looks=[],board={},activeFilter='Tất cả',editId=null,photos=[],busy=false,processing=false,photoGeneration=0,restoreRequested=false;
+const uuid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2);
+function toast(msg){$('toast').textContent=msg;$('toast').classList.remove('hidden');clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),2900)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function tx(store,mode='readonly'){return db.transaction(store,mode).objectStore(store)}
+function req(r){return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function openDB(){return new Promise((res,rej)=>{let r=indexedDB.open('my-little-closet-v1',1);r.onupgradeneeded=()=>{let d=r.result;d.createObjectStore('items',{keyPath:'id'});d.createObjectStore('looks',{keyPath:'id'})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function persist(store,obj){await req(tx(store,'readwrite').put(obj))}async function remove(store,id){await req(tx(store,'readwrite').delete(id))}
+async function reload(){items=await req(tx('items').getAll());looks=await req(tx('looks').getAll());items.sort((a,b)=>b.added-a.added);looks.sort((a,b)=>b.added-a.added);render()}
+function render(){ $('count').textContent=items.length+' món đồ';$('savedCount').textContent='('+looks.length+')';renderFilters();renderCloset();renderBoard();renderLooks() }
+function renderFilters(){$('filters').innerHTML=['Tất cả',...CATS].map(c=>`<button class="chip ${activeFilter===c?'active':''}" data-cat="${esc(c)}">${esc(c)}${c==='Tất cả'?' ('+items.length+')':''}</button>`).join('');$('filters').querySelectorAll('button').forEach(b=>b.onclick=()=>{activeFilter=b.dataset.cat;renderFilters();renderCloset()})}
+function renderCloset(){let q=$('search').value.trim().toLocaleLowerCase();let shown=items.filter(i=>(activeFilter==='Tất cả'||i.cat===activeFilter)&&[i.name,i.color,i.note,i.season].join(' ').toLocaleLowerCase().includes(q));$('closet').innerHTML=shown.length?shown.map(i=>`<div class="item" draggable="true" data-id="${esc(i.id)}"><img src="${i.photo}" alt="${esc(i.name)}" loading="lazy"><div class="info"><div class="name" title="${esc(i.name)}">${esc(i.name)}</div><div class="sub">${esc(i.cat)}${i.color?' · '+esc(i.color):''}</div><div class="actions"><button class="small add" data-add="${esc(i.id)}">＋ Phối</button><button class="small" title="Sửa" data-edit="${esc(i.id)}">✎</button><button class="small" title="Xóa" data-delete="${esc(i.id)}">🗑</button></div></div></div>`).join(''):`<div class="empty">Chưa có món nào ở đây 🧺<br>Nhấn “Thêm quần áo” để bắt đầu nhé!</div>`;
+$('closet').querySelectorAll('[draggable]').forEach(el=>el.ondragstart=e=>e.dataTransfer.setData('text/plain',el.dataset.id));$('closet').querySelectorAll('[data-add]').forEach(el=>el.onclick=()=>addToBoard(el.dataset.add));$('closet').querySelectorAll('[data-edit]').forEach(el=>el.onclick=()=>openModal(el.dataset.edit));$('closet').querySelectorAll('[data-delete]').forEach(el=>el.onclick=()=>deleteItem(el.dataset.delete))}
+function addToBoard(id,slot){let it=items.find(x=>x.id===id);if(!it)return;board[slot||it.cat]=id;renderBoard();toast('Đã thêm vào outfit ✨')}
+function renderBoard(){updateMixCount();$('board').innerHTML=SLOTS.map(c=>{let it=items.find(i=>i.id===board[c]);return `<div class="slot ${it?'filled':''}" data-slot="${esc(c)}"><span class="slotlabel">${esc(c)}</span>${it?`<button class="slotremove" data-remove="${esc(c)}" title="Bỏ khỏi outfit">×</button><img alt="${esc(it.name)}" src="${it.photo}"><div class="slotcaption">${esc(it.name)}</div>`:`<div style="font-size:30px;opacity:.27">＋</div><div class="sub">Thả ảnh vào đây</div>`}</div>`}).join('');$('board').querySelectorAll('.slot').forEach(s=>{s.ondragover=e=>{e.preventDefault();s.classList.add('dropdrag')};s.ondragleave=()=>s.classList.remove('dropdrag');s.ondrop=e=>{e.preventDefault();s.classList.remove('dropdrag');let id=e.dataTransfer.getData('text/plain');addToBoard(id,s.dataset.slot)}});$('board').querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{delete board[b.dataset.remove];renderBoard()})}
+function renderLooks(){$('savedGrid').innerHTML=looks.length?looks.map(l=>{let selected=Object.entries(l.board).map(([slot,id])=>({slot,it:items.find(i=>i.id===id)})).filter(x=>x.it);return `<article class="lookcard"><div class="lookpics">${selected.slice(0,6).map(x=>`<img src="${x.it.photo}" title="${esc(x.slot)}: ${esc(x.it.name)}" alt="${esc(x.it.name)}">`).join('')||'<div class="placeholder">Chưa có ảnh</div>'}</div><div class="lookname">${esc(l.name)}</div><div class="muted">${selected.length} món · ${new Date(l.added).toLocaleDateString('vi-VN')}</div><div class="btnrow" style="margin-top:10px"><button class="small add" data-load="${esc(l.id)}">Mở để phối lại</button><button class="small" data-del-look="${esc(l.id)}">Xóa</button></div></article>`}).join(''):'<div class="empty">Chưa lưu outfit nào ♡<br>Qua tab Tủ đồ để mix bộ đầu tiên nha.</div>';$('savedGrid').querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{let l=looks.find(x=>x.id===b.dataset.load);board={...l.board};$('lookName').value=l.name;switchTab('studio');renderBoard();toast('Đã mở outfit để phối lại')});$('savedGrid').querySelectorAll('[data-del-look]').forEach(b=>b.onclick=async()=>{if(!confirm('Xóa outfit này nhé?'))return;await remove('looks',b.dataset.delLook);await reload()})}
+function switchTab(tab){for(let x of document.querySelectorAll('.tab'))x.classList.toggle('active',x.dataset.tab===tab);$('studio').classList.toggle('hidden',tab!=='studio');$('saved').classList.toggle('hidden',tab!=='saved')}
+async function deleteItem(id){let i=items.find(x=>x.id===id);if(!confirm(`Xóa “${i.name}” khỏi tủ đồ? Món này cũng sẽ không hiện trong outfit đã lưu.`))return;await remove('items',id);for(let k in board)if(board[k]===id)delete board[k];await reload()}
+function openModal(id=null){editId=id;photoGeneration++;photos=[];processing=false;restoreRequested=false;$('photoInput').value='';$('previews').innerHTML='';$('bgStatus').textContent='';$('submitItem').disabled=false;$('autoRemove').checked=true;let i=items.find(x=>x.id===id);$('restoreOriginal').classList.toggle('hidden',!i?.original);$('dialogTitle').textContent=id?'Sửa món đồ':'Thêm quần áo';$('itemName').value=i?.name||'';$('itemCat').value=i?.cat||'Áo';$('itemColor').value=i?.color||'';$('itemSeason').value=i?.season||'';$('itemNote').value=i?.note||'';$('fileField').querySelector('label').textContent=id?'Thay ảnh (nếu muốn)':'Ảnh đồ (có thể chọn nhiều ảnh một lúc)';$('dialogBack').classList.remove('hidden')}
+function closeModal(){photoGeneration++;processing=false;$('dialogBack').classList.add('hidden')}
+async function fileToDataURL(f){return new Promise((res,rej)=>{let r=new FileReader;r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(f)})}
+async function shrink(f){let data=await fileToDataURL(f);return new Promise((res,rej)=>{let image=new Image();image.onload=()=>{let scale=Math.min(1,1100/Math.max(image.width,image.height));let canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));let ctx=canvas.getContext('2d');if(f.type!=='image/png'){ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height)}ctx.drawImage(image,0,0,canvas.width,canvas.height);res(canvas.toDataURL(f.type==='image/png'?'image/png':'image/jpeg',f.type==='image/png'?undefined:0.82))};image.onerror=()=>rej(new Error('Ảnh không đọc được'));image.src=data})}
+// AI runs locally. Only model/runtime files are downloaded from the CDN.
+let removeBackgroundFn=null;
+async function getRemover(){
+ if(removeBackgroundFn)return removeBackgroundFn;
+ const mod=await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm');
+ if(typeof mod.removeBackground!=='function')throw new Error('Không khởi tạo được AI tách nền');
+ removeBackgroundFn=mod.removeBackground;return removeBackgroundFn;
+}
+function updatePreviews(){
+ $('previews').innerHTML=photos.map((p,i)=>`<div class="preview-tile"><img src="${p.photo}" alt="Xem trước ảnh ${i+1}"><small>${p.removed?'Đã tách nền':'Ảnh gốc'}</small></div>`).join('');
+}
+$('photoInput').onchange=async e=>{
+ const generation=++photoGeneration,fs=[...e.target.files].slice(0,40);photos=[];processing=true;
+ $('submitItem').disabled=true;$('previews').textContent='Đang chuẩn bị ảnh...';
+ try{
+  for(let j=0;j<fs.length;j++){
+   if(generation!==photoGeneration)return;
+   let f=fs[j];if(!f.type.startsWith('image/'))continue;
+   $('bgStatus').textContent=`Đang đọc ảnh ${j+1}/${fs.length}...`;
+   const original=await shrink(f);
+   let photo=original,removed=false;
+   if($('autoRemove').checked){
+    try{
+     $('bgStatus').textContent=`✨ AI đang tách nền ảnh ${j+1}/${fs.length}. Lần đầu có thể cần tải mô hình...`;
+     const removeBg=await getRemover();
+     const inputBlob=await (await fetch(original)).blob();
+     const outputBlob=await removeBg(inputBlob,{model:'isnet_quint8',output:{format:'image/png',type:'foreground'}});
+     photo=await shrink(new File([outputBlob],'tach-nen.png',{type:'image/png'}));removed=true;
+    }catch(err){console.warn('Tách nền thất bại',err);$('bgStatus').textContent='⚠️ AI chưa chạy được (kiểm tra internet). Đã giữ lại ảnh gốc.';}
+   }
+   if(generation!==photoGeneration)return;
+   photos.push({photo,original,removed});updatePreviews();
+  }
+  if(generation===photoGeneration){$('bgStatus').textContent=photos.some(p=>p.removed)?`✅ Hoàn tất: ${photos.filter(p=>p.removed).length}/${photos.length} ảnh đã tách nền. Có thể lưu vào tủ.`:$('autoRemove').checked?'⚠️ Chưa tách được nền. M vẫn có thể lưu ảnh gốc hoặc thử lại khi có internet.':'Đã chuẩn bị ảnh gốc, không tách nền.';}
+ }catch(err){$('bgStatus').textContent='Không đọc được ảnh: '+err.message;}
+ finally{if(generation===photoGeneration){processing=false;$('submitItem').disabled=false;}}
+};
+$('autoRemove').onchange=()=>{if(photos.length&&!processing){$('bgStatus').textContent='Đổi chế độ rồi chọn lại ảnh để áp dụng nha.';}};
+$('restoreOriginal').onclick=()=>{restoreRequested=true;$('bgStatus').textContent='Sẽ dùng ảnh gốc sau khi bấm Lưu.';};
+$('submitItem').onclick=async()=>{
+ if(busy||processing)return;
+ let name=$('itemName').value.trim(),cat=$('itemCat').value,color=$('itemColor').value.trim(),season=$('itemSeason').value,note=$('itemNote').value.trim();
+ if(!editId&&!photos.length)return toast('M chọn ảnh món đồ trước nha!');
+ busy=true;$('submitItem').disabled=true;
+ try{
+  if(editId){
+   let old=items.find(x=>x.id===editId),newPhoto=photos[0];
+   let imgFields=newPhoto?{photo:newPhoto.photo,original:newPhoto.original,removed:newPhoto.removed}:restoreRequested&&old.original?{photo:old.original,original:old.original,removed:false}:{};
+   await persist('items',{...old,name:name||old.name,cat,color,season,note,...imgFields});
+  }else{
+   for(let j=0;j<photos.length;j++){
+    let p=photos[j];await persist('items',{id:uuid(),name:name?(photos.length>1?`${name} ${j+1}`:name):`${cat} ${items.length+j+1}`,cat,color,season,note,...p,added:Date.now()+j});
+   }
+  }
+  closeModal();await reload();toast('Đã cất đồ vào tủ! ♡');
+ }catch(e){alert('Không lưu được ảnh. Có thể bộ nhớ trình duyệt đã đầy. Hãy sao lưu và thử ảnh nhỏ hơn.\n'+e.message)}
+ finally{busy=false;$('submitItem').disabled=false;}
+};
+$('saveLook').onclick=async()=>{let valid=Object.entries(board).filter(([s,id])=>items.some(i=>i.id===id));if(!valid.length)return toast('Thêm ít nhất một món vào outfit trước nha!');let name=$('lookName').value.trim()||`Outfit ${new Date().toLocaleDateString('vi-VN')}`;let look={id:uuid(),name,board:Object.fromEntries(valid),added:Date.now()};try{await persist('looks',look);await reload();toast('Đã lưu outfit xinh xẻo! ♡')}catch(e){alert('Lưu outfit thất bại: '+e.message)}};
+$('clearBoard').onclick=()=>{board={};$('lookName').value='';renderBoard()};$('search').oninput=renderCloset;$('uploadBtn').onclick=()=>openModal();$('closeDialog').onclick=closeModal;$('cancelDialog').onclick=closeModal;$('dialogBack').onclick=e=>{if(e.target===$('dialogBack'))closeModal()};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+$('backupBtn').onclick=async()=>{let payload={app:'my-little-closet',version:4,exportedAt:new Date().toISOString(),items,looks};let blob=new Blob([JSON.stringify(payload)],{type:'application/json'});let url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='tu-do-ao-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Đã tải bản sao lưu 💾')};
+$('restoreBtn').onclick=()=>$('restoreInput').click();$('restoreInput').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let data=JSON.parse(await f.text());if(data.app!=='my-little-closet'||!Array.isArray(data.items)||!Array.isArray(data.looks))throw Error('Không đúng file sao lưu tủ đồ');if(!confirm(`Khôi phục ${data.items.length} món và ${data.looks.length} outfit? Dữ liệu từ file sẽ được gộp vào tủ hiện tại.`))return;for(let i of data.items)if(i.id&&i.photo&&i.cat)await persist('items',i);for(let l of data.looks)if(l.id&&l.board)await persist('looks',l);await reload();toast('Khôi phục tủ đồ thành công ♡')}catch(err){alert('Khôi phục thất bại: '+err.message)}finally{e.target.value=''}};
+
+// Flat-lay: image-only lookboard, with no mannequin or body data.
+function selectedPieces(){return SLOTS.map(cat=>({cat,it:items.find(x=>x.id===board[cat])})).filter(x=>x.it)}
+function updateMixCount(){const x=$('mixCount');if(x)x.textContent=selectedPieces().length+' món'}
+const positions={
+ 'Áo':{x:27,y:8,w:45,h:35,r:-3,z:4},
+ 'Áo khoác':{x:13,y:7,w:53,h:45,r:-8,z:5},
+ 'Quần':{x:32,y:43,w:44,h:45,r:3,z:3},
+ 'Chân váy':{x:30,y:43,w:46,h:37,r:5,z:3},
+ 'Váy liền':{x:25,y:12,w:52,h:72,r:-2,z:4},
+ 'Giày dép':{x:2,y:68,w:32,h:25,r:-12,z:6},
+ 'Túi xách':{x:67,y:25,w:31,h:29,r:9,z:7},
+ 'Phụ kiện':{x:65,y:6,w:31,h:20,r:8,z:8}
+};
+function mixOutfit(){const selected=selectedPieces(),canvas=$('mixCanvas');updateMixCount();if(!selected.length){canvas.innerHTML='';canvas.classList.add('empty');toast('M chọn ít nhất một món trước nha ♡');return}canvas.classList.remove('empty');
+const clothing=selected.filter(x=>!['Phụ kiện','Túi xách','Giày dép'].includes(x.cat));
+// Keep the main outfit close and legible, with side accessories.
+let active=selected.map(({cat,it})=>({cat,it,p:{...positions[cat]}}));
+if(selected.length===1){active[0].p={x:19,y:15,w:62,h:69,r:-2,z:4}}
+else if(clothing.length===1){const only=active.find(x=>x.cat===clothing[0].cat);only.p={x:17,y:12,w:64,h:68,r:-2,z:4}}
+if(board['Váy liền']){active.filter(x=>['Áo','Quần','Chân váy'].includes(x.cat)).forEach((x,i)=>{x.p={x:i?49:5,y:i?53:50,w:33,h:31,r:i?6:-6,z:6+i}})}
+canvas.innerHTML=active.map(({cat,it,p},i)=>`<figure class="mixpiece" style="left:${p.x}%;top:${p.y}%;width:${p.w}%;height:${p.h}%;z-index:${p.z};transform:rotate(${p.r}deg);animation-delay:${i*65}ms"><img src="${it.photo}" alt="${esc(it.name)}" draggable="false"><figcaption title="${esc(it.name)}">${esc(it.name)}</figcaption></figure>`).join('');
+toast('Đã mix '+selected.length+' món! 🌿');
+}
+$('mixButton').onclick=mixOutfit;
+
+// Mỗi người dùng có vùng lưu riêng: users/{uid}/items và users/{uid}/looks.
+// Cấu hình dự án được gắn vào ứng dụng khi xuất index.html, không phải mật khẩu.
+const CLOUD_PRESET = null;
+let firebaseSDK=null, cloudApp=null, cloudAuth=null, cloudDB=null, cloudUser=null;
+let cloudBusy=false, cloudConfigured=false, cloudRetryTimer=null;
+const CLOUD_PENDING_KEY='mai-anh-closet-sync-queue-v1';
+const CLOUD_CFG_KEY='mai-anh-closet-firebase-v1';
+function cloudSyncedKey(store){return 'mai-anh-cloud-seen-'+(cloudUser?.uid||'guest')+'-'+store}
+function cloudSeen(store){try{return new Set(JSON.parse(localStorage.getItem(cloudSyncedKey(store))||'[]'))}catch{return new Set()}}
+function cloudSaveSeen(store,set){localStorage.setItem(cloudSyncedKey(store),JSON.stringify([...set]))}
+let CLOUD_CFG=CLOUD_PRESET || (()=>{try{return JSON.parse(localStorage.getItem(CLOUD_CFG_KEY)||'null')}catch{return null}})();
+function cloudLog(message,detail=''){document.getElementById('cloudLabel').textContent=message;document.getElementById('cloudDetail').textContent=detail}
+function cloudProgress(s=''){document.getElementById('cloudProgress').textContent=s}
+function cloudPending(){try{return JSON.parse(localStorage.getItem(CLOUD_PENDING_KEY)||'[]')}catch{return []}}
+function cloudQueue(store,id,action){if(!cloudConfigured)return;let q=cloudPending().filter(x=>!(x.store===store&&x.id===id));q.push({store,id,action,when:Date.now()});localStorage.setItem(CLOUD_PENDING_KEY,JSON.stringify(q));cloudProgress(`⏳ ${q.length} thay đổi chưa đồng bộ`);if(cloudUser)cloudSchedule()}
+function cloudSchedule(){clearTimeout(cloudRetryTimer);cloudRetryTimer=setTimeout(()=>{cloudSync().catch(e=>cloudProgress('⚠ Đồng bộ lỗi: '+e.message))},850)}
+function cloudParseConfig(s){
+ const body=s.trim().replace(/^\s*(?:const|let|var)\s+firebaseConfig\s*=\s*/,'').replace(/;\s*$/,'');
+ let cfg;
+ try{cfg=JSON.parse(body)}catch{let x=body.match(/\{[\s\S]*\}/);if(!x)throw Error('Không tìm thấy phần { ... } của firebaseConfig');let obj=x[0];obj=obj.replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g,'$1"$2":').replace(/'/g,'"').replace(/,\s*([}\]])/g,'$1');cfg=JSON.parse(obj)}
+ if(!cfg||typeof cfg!=='object'||!cfg.apiKey||!cfg.authDomain||!cfg.projectId||!cfg.appId)throw Error('Cần đủ apiKey, authDomain, projectId và appId.');
+ return cfg
+}
+function cloudInfo(s){document.getElementById('cloudSetupInfo').textContent=s}
+function cloudDownloadConfigured(){
+ const cfg=cloudParseConfig(document.getElementById('cloudConfig').value);
+ const html='<!doctype html>\n'+document.documentElement.outerHTML;
+ const mark='const CLOUD_PRESET = null;';
+ if(!html.includes(mark))throw Error('Không tìm thấy vị trí gắn cấu hình ứng dụng');
+ const built=html.replace(mark,'const CLOUD_PRESET = '+JSON.stringify(cfg).replace(/</g,'\\u003c')+';');
+ const blob=new Blob([built],{type:'text/html;charset=utf-8'});const a=document.createElement('a');let url=URL.createObjectURL(blob);a.href=url;a.download='index.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
+ localStorage.setItem(CLOUD_CFG_KEY,JSON.stringify(cfg));cloudInfo('✅ Đã tạo index.html chứa cấu hình dự án của m. Đưa file này lên hosting HTTPS. Sau đó thêm miền web trong Firebase Authentication → Authorized domains.');
+}
+async function cloudSDK(){if(firebaseSDK)return firebaseSDK;
+ const [app,auth,firestore]=await Promise.all([
+ import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),
+ import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js'),
+ import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js')]);
+ firebaseSDK={...app,...auth,...firestore};return firebaseSDK;
+}
+async function cloudInit(cfg){
+ if(cloudConfigured)return;
+ let F=await cloudSDK();cloudApp=F.initializeApp(cfg,'mai-anh-closet-'+cfg.projectId);
+ cloudAuth=F.getAuth(cloudApp);cloudDB=F.getFirestore(cloudApp);
+ cloudConfigured=true;CLOUD_CFG=cfg;cloudLog('Google Sync đã sẵn sàng','Bấm Kết nối Google để đăng nhập.');
+ F.onAuthStateChanged(cloudAuth,async user=>{
+  cloudUser=user;document.getElementById('cloudLogout').classList.toggle('hidden',!user);
+  document.getElementById('cloudConnect').textContent=user?'☁ Đồng bộ ngay':'☁ Kết nối Google';
+  if(user){cloudLog('Đã đăng nhập: '+(user.email||'Google'),'Đang kiểm tra dữ liệu từ cloud...');try{await cloudSync()}catch(e){cloudProgress('⚠ '+e.message)}}
+  else{cloudLog('Google Sync đã cấu hình','Đăng nhập để đồng bộ tủ đồ.');cloudProgress('')}
+ });
+}
+async function cloudLogin(){if(!CLOUD_CFG){document.getElementById('cloudPanel').classList.remove('hidden');cloudInfo('Chưa có cấu hình Firebase. Làm các bước trong bảng này một lần nha.');return}
+ try{await cloudInit(CLOUD_CFG);if(cloudUser){await cloudSync();return}
+ const F=firebaseSDK;await F.signInWithPopup(cloudAuth,new F.GoogleAuthProvider());document.getElementById('cloudPanel').classList.add('hidden')}
+ catch(e){cloudProgress('⚠ '+e.message);if(e.code==='auth/unauthorized-domain')alert('Cần thêm tên miền trang web vào Firebase → Authentication → Settings → Authorized domains.');else if(location.protocol==='file:')alert('Để đăng nhập Google ổn định, m phải mở ứng dụng qua một đường link HTTPS đã đăng lên web, không phải file HTML trong máy.');else alert('Google Sync chưa kết nối: '+e.message)}
+}
+function cloudDoc(store,id){return firebaseSDK.doc(cloudDB,'users',cloudUser.uid,store,id)}
+function cloudDownsize(i){let obj={...i};let bytes=s=>new TextEncoder().encode(s||'').length;
+ if(bytes(JSON.stringify(obj))>850000){delete obj.original}
+ // Firestore giới hạn tài liệu ~1 MiB; tránh gửi ảnh quá lớn và báo lỗi để không hiểu lầm đã đồng bộ.
+ if(bytes(JSON.stringify(obj))>850000)throw Error('Ảnh '+(i.name||'')+' quá lớn để lưu cloud. Hãy dùng ảnh nhỏ hơn; ảnh vẫn được giữ trên máy.');
+ return obj
+}
+async function cloudSync(){
+ if(!cloudUser||cloudBusy)return;cloudBusy=true;
+ try{
+ const F=firebaseSDK;let queue=cloudPending();cloudProgress('⏳ Đang đồng bộ...');
+ // Tải thay đổi lên trước để không làm sống lại món vừa bị xóa trên thiết bị này.
+ for(const change of queue){
+  let target=cloudDoc(change.store,change.id);
+  if(change.action==='delete')await F.deleteDoc(target);
+  else{let obj=await req(tx(change.store).get(change.id));if(obj)await F.setDoc(target,change.store==='items'?cloudDownsize(obj):obj);else await F.deleteDoc(target)}
+  let pending=cloudPending();localStorage.setItem(CLOUD_PENDING_KEY,JSON.stringify(pending.filter(x=>!(x.store===change.store&&x.id===change.id&&x.when===change.when))));
+ }
+ // Lấy dữ liệu tất cả thiết bị theo ID, không ghi đè bản tại máy nếu bản đó mới hơn.
+ for(const store of ['items','looks']){
+  const snapshot=await F.getDocs(F.collection(cloudDB,'users',cloudUser.uid,store));
+  const remote=new Map(snapshot.docs.map(x=>[x.id,x.data()]));
+  const local=await req(tx(store).getAll());let localMap=new Map(local.map(x=>[x.id,x]));
+  for(let [id,obj] of remote){let existing=localMap.get(id);if(!existing || (obj.updated||obj.added||0)>(existing.updated||existing.added||0))await localPersist(store,{...obj,id})}
+  // Các ID từng được đồng bộ mà nay mất trên cloud là đã bị xóa trên thiết bị khác.
+  const seen=cloudSeen(store);
+  for(let obj of local){if(!remote.has(obj.id)){
+    if(seen.has(obj.id)){await localRemoveSilent(store,obj.id)}
+    else {await F.setDoc(cloudDoc(store,obj.id),store==='items'?cloudDownsize(obj):obj);remote.set(obj.id,obj)}
+  }}
+  cloudSaveSeen(store,new Set(remote.keys()));
+ }
+ await reload();cloudLog('✓ Đã đồng bộ Google',`${cloudUser.email||'Tài khoản Google'} · ${new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`);
+ cloudProgress('✓ Tủ đồ đã lưu trên cloud và trên thiết bị này.');
+ }catch(e){cloudLog('⚠ Chưa đồng bộ xong','Dữ liệu vẫn lưu trên thiết bị này.');cloudProgress('⚠ '+e.message);throw e}
+ finally{cloudBusy=false}
+}
+async function localPersist(store,obj){await req(tx(store,'readwrite').put(obj))}
+async function localRemoveSilent(store,id){await req(tx(store,'readwrite').delete(id))}
+const basePersist=persist,baseRemove=remove;
+persist=async function(store,obj){obj.updated=Date.now();await basePersist(store,obj);cloudQueue(store,obj.id,'upsert')};
+remove=async function(store,id){await baseRemove(store,id);cloudQueue(store,id,'delete')};
+document.getElementById('cloudConnect').onclick=()=>cloudLogin();
+document.getElementById('cloudLogout').onclick=async()=>{if(cloudAuth)await firebaseSDK.signOut(cloudAuth)};
+document.getElementById('cloudClose').onclick=()=>document.getElementById('cloudPanel').classList.add('hidden');
+document.getElementById('cloudBuild').onclick=()=>{try{cloudDownloadConfigured()}catch(e){cloudInfo('⚠ '+e.message)}};
+document.getElementById('cloudApply').onclick=async()=>{try{let cfg=cloudParseConfig(document.getElementById('cloudConfig').value);localStorage.setItem(CLOUD_CFG_KEY,JSON.stringify(cfg));await cloudInit(cfg);await cloudLogin();cloudInfo('Đã kết nối thử. Nhớ tạo file web đã cấu hình và đưa lên hosting.')}catch(e){cloudInfo('⚠ '+e.message)}};
+window.addEventListener('online',()=>{if(cloudUser)cloudSchedule()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&cloudUser)cloudSchedule()});
+if(CLOUD_CFG){cloudInit(CLOUD_CFG).catch(e=>cloudProgress('⚠ Không mở được Google Sync: '+e.message))}
+
+(async()=>{try{$('itemCat').innerHTML=CATS.map(c=>`<option>${c}</option>`).join('');db=await openDB();await reload()}catch(e){document.querySelector('.shell').insertAdjacentHTML('afterbegin','<div class="topnote">⚠️ Trình duyệt đang chặn lưu dữ liệu. Hãy mở file bằng Chrome/Edge bình thường (không ở chế độ ẩn danh). '+esc(e.message)+'</div>')}})();
+</script></body></html>
