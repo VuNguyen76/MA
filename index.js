@@ -1378,17 +1378,17 @@ if ($('aiGenerateBtn')) {
         ? `Realistic full-body fashion try-on photograph of the exact person from the first reference image wearing the exact outfit from the remaining garment images (${garmentDesc}). Preserve the person's exact face, hairstyle, body proportions, and every garment's exact color, pattern, cut, and fabric texture. Natural soft daylight, clean minimalist warm cream studio background, high-fashion Kinfolk editorial lookbook photography.`
         : `High-fashion Kinfolk editorial full-body lookbook photograph of a stylish young Vietnamese female model wearing the exact clothing items shown in the reference images (${garmentDesc}). Preserve every garment's exact color, pattern, silhouette, and fabric detail accurately. Soft natural window light, clean minimalist warm cream linen studio backdrop, realistic fashion photography.`;
 
-      const imgModels = ['gemini-3.1-flash-image', 'gemini-nano-banana-2.1', 'gemini-3-pro-image'];
+      // Gọi model mặc định trên Puter (hỗ trợ miễn phí, không bị lỗi 402 hết credit) kèm input_images
+      const attempts = [
+        () => ai.txt2img(prompt, { input_images: inputImages }),
+        () => ai.txt2img(prompt)
+      ];
       let imgEl = null;
       let lastErr;
 
-      for (const model of imgModels) {
+      for (const run of attempts) {
         try {
-          imgEl = await ai.txt2img(prompt, {
-            model,
-            input_images: inputImages,
-            ratio: { w: 3, h: 4 }
-          });
+          imgEl = await run();
           if (imgEl) break;
         } catch (err) {
           lastErr = err;
