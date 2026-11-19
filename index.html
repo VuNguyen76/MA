@@ -25,7 +25,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <link rel="stylesheet" href="index.css" />
-  <script src="https://js.puter.com/v2/"></script>
 </head>
 <body>
   <div class="ambient-glow glow-top" aria-hidden="true"></div>
@@ -91,9 +90,12 @@
           <div class="section-toolbar">
             <h2 class="section-heading">Today's Outfit</h2>
             <div class="toolbar-actions">
-              <button type="button" class="btn-subtle" id="aiStylistBtn" title="Gemini tự phối đồ từ tủ">
+              <button type="button" class="btn-subtle" id="aiStylistBtn" title="AI tự phối đồ từ tủ">
                 <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
                 <span>AI Gợi ý</span>
+              </button>
+              <button type="button" class="icon-pill icon-pill-sm" id="aiGenerateBtn" title="Tạo ảnh phối đồ AI" aria-label="Tạo ảnh phối đồ AI">
+                <i class="fa-solid fa-camera-retro" aria-hidden="true"></i>
               </button>
               <button type="button" class="icon-pill icon-pill-sm" id="clearBoard" title="Làm mới bảng phối" aria-label="Làm mới bảng phối">
                 <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
@@ -111,16 +113,9 @@
 
             <div id="mixCanvas" class="mixcanvas empty" aria-live="polite" aria-label="Khung ảnh phối đồ"></div>
 
-            <div class="artboard-actions">
-              <button type="button" class="btn-primary btn-block" id="aiGenerateBtn">
-                <span>Xem trên Ma-nơ-canh AI</span>
-                <span class="btn-bubble"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></span>
-              </button>
-            </div>
-
             <div id="aiResultBox" class="ai-result-box hidden">
               <div class="ai-result-head">
-                <span class="artboard-label">Ma-nơ-canh Lookbook</span>
+                <i class="fa-solid fa-wand-magic-sparkles artboard-label" aria-hidden="true"></i>
                 <button type="button" class="btn-close-sm" id="closeAiResult" aria-label="Đóng">
                   <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                 </button>
@@ -131,9 +126,9 @@
                   <i class="fa-solid fa-download" aria-hidden="true"></i>
                   <span>Tải ảnh</span>
                 </button>
-                <button type="button" class="btn-accent" id="saveAiImgDrive">
-                  <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
-                  <span>Lưu vào Drive</span>
+                <button type="button" class="btn-accent" id="saveAiToLooks">
+                  <i class="fa-regular fa-bookmark" aria-hidden="true"></i>
+                  <span>Lưu bộ sưu tập</span>
                 </button>
               </div>
             </div>
@@ -216,7 +211,7 @@
         <div class="ai-autotag-row">
           <button type="button" class="btn-subtle hidden" id="aiAutoTagBtn">
             <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
-            <span>Gemini tự điền thông tin</span>
+            <span>AI tự điền thông tin</span>
           </button>
         </div>
 

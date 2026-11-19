@@ -496,10 +496,11 @@ function renderLooks() {
 
     return `
       <article class="lookcard">
+        ${l.aiPhoto ? `<div class="look-ai-wrap"><img class="look-ai-thumb" src="${l.aiPhoto}" alt="${esc(l.name)}" loading="lazy"></div>` : ''}
         <div class="lookpics">
           ${selected.slice(0, 6).map(x => `
             <img src="${x.it.photo}" title="${esc(x.slot)}: ${esc(x.it.name)}" alt="${esc(x.it.name)}">
-          `).join('') || '<div class="placeholder">Chưa có ảnh</div>'}
+          `).join('') || (l.aiPhoto ? '' : '<div class="placeholder">Chưa có ảnh</div>')}
         </div>
         <div class="lookname">${esc(l.name)}</div>
         <div class="muted">${selected.length} món · ${new Date(l.added).toLocaleDateString('vi-VN')}</div>
@@ -1063,27 +1064,9 @@ if ($('syncCloudBtn')) {
 }
 
 // =============================================================================
-// 11. GEMINI AI STUDIO QUA PUTER.JS
+// 11. MUSE AI STUDIO (GỌI QUA PROXY /api/muse)
 // =============================================================================
-let lastAiImgElement = null;
-
-function getPuterAi() {
-  if (!window.puter || !window.puter.ai) {
-    throw new Error('Chưa tải được Puter AI, hãy kiểm tra kết nối mạng và tải lại trang');
-  }
-  return window.puter.ai;
-}
-
-function extractChatText(res) {
-  if (!res) return '';
-  if (typeof res === 'string') return res;
-  const content = res.message?.content ?? res.text ?? res;
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    return content.map(p => (typeof p === 'string' ? p : p?.text || '')).join('\n');
-  }
-  return String(content);
-}
+let lastAiDataUrl = '';
 
 function parseJsonBlock(rawText) {
   const cleaned = String(rawText || '').replace(/```json\s*/gi, '').replace(/```/g, '').trim();
@@ -1091,31 +1074,40 @@ function parseJsonBlock(rawText) {
   return JSON.parse(match ? match[0] : cleaned);
 }
 
-async function callGeminiChat(prompt, imageInput = null) {
-  const ai = getPuterAi();
-  const models = ['google/gemini-2.5-flash', 'google/gemini-3.8-flash'];
-  let lastErr;
-  for (const model of models) {
-    try {
-      const res = imageInput
-        ? await ai.chat(prompt, imageInput, { model })
-        : await ai.chat(prompt, { model });
-      return extractChatText(res);
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr || new Error('Không gọi được Gemini AI');
+async function callMuseChat(prompt, imageUrl = null) {
+  const content = imageUrl
+    ? [
+        { type: 'text', text: prompt },
+        { type: 'image_url', image_url: { url: imageUrl } }
+      ]
+    : prompt;
+
+  const res = await fetch('/api/muse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'chat',
+      messages: [{ role: 'user', content }]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data.text || '';
 }
 
-async function imageElToDataUrl(imgEl) {
-  if (imgEl.src && imgEl.src.startsWith('data:image/')) return imgEl.src;
-  const res = await fetch(imgEl.src);
-  const blob = await res.blob();
-  return await fileToDataURL(blob);
+async function callMuseImage(prompt) {
+  const res = await fetch('/api/muse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'image', prompt })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  if (!data.dataUrl) throw new Error('API không trả về ảnh');
+  return data.dataUrl;
 }
 
-// 11A. Gemini Vision tự điền tên, loại, màu, dịp mặc khi thêm đồ mới
+// 11A. AI tự điền tên, loại, màu, dịp mặc khi thêm đồ mới
 if ($('aiAutoTagBtn')) {
   $('aiAutoTagBtn').onclick = async () => {
     if (!photos.length) return toast('Hãy chọn ảnh món đồ trước nhé');
@@ -1126,7 +1118,7 @@ if ($('aiAutoTagBtn')) {
     try {
       const prompt = `Bạn là stylist thời trang. Nhìn ảnh trang phục này và trả về DUY NHẤT 1 JSON hợp lệ (không giải thích thêm):
 {"name":"Tên ngắn gọn tiếng Việt (VD: Áo sơ mi lụa trắng)","cat":"Chọn đúng 1 trong: ${CATS.join(', ')}","color":"Màu chủ đạo tiếng Việt","season":"Chọn đúng 1 trong: Đi làm, Đi chơi dạo phố, Dự tiệc, Du lịch, Mặc ở nhà","note":"Gợi ý phối đồ ngắn dưới 12 từ"}`;
-      const raw = await callGeminiChat(prompt, photos[0].original || photos[0].photo);
+      const raw = await callMuseChat(prompt, photos[0].original || photos[0].photo);
       const info = parseJsonBlock(raw);
       if (info.name) $('itemName').value = String(info.name).slice(0, 100);
       if (info.cat && CATS.includes(info.cat)) $('itemCat').value = info.cat;
@@ -1136,9 +1128,9 @@ if ($('aiAutoTagBtn')) {
         if (opts.includes(info.season)) $('itemSeason').value = info.season;
       }
       if (info.note) $('itemNote').value = String(info.note).slice(0, 250);
-      toast('Gemini đã tự điền thông tin món đồ');
+      toast('AI đã tự điền thông tin món đồ');
     } catch (err) {
-      toast('Gemini chưa phân tích được: ' + (err?.message || err));
+      toast('AI chưa phân tích được: ' + (err?.message || err));
     } finally {
       btn.disabled = false;
       btn.innerHTML = oldHtml;
@@ -1146,7 +1138,7 @@ if ($('aiAutoTagBtn')) {
   };
 }
 
-// 11B. Gemini AI Stylist tự chọn set đồ hợp gu từ tủ đồ hiện có
+// 11B. AI Stylist tự chọn set đồ hợp gu từ tủ đồ hiện có
 if ($('aiStylistBtn')) {
   $('aiStylistBtn').onclick = async () => {
     if (items.length < 2) return toast('Cần ít nhất 2 món đồ trong tủ để AI phối');
@@ -1167,7 +1159,7 @@ ${JSON.stringify(catalog)}
 Hãy chọn 1 set outfit đẹp nhất (2 đến 4 món khác loại; nếu chọn "Váy liền" thì không chọn "Quần"/"Chân váy").
 Trả về DUY NHẤT 1 JSON hợp lệ:
 {"itemIds":["id1","id2"],"title":"Tên outfit tiếng Việt ngắn gọn","reason":"Nhận xét phối đồ 1 câu ngắn tiếng Việt"}`;
-      const raw = await callGeminiChat(prompt);
+      const raw = await callMuseChat(prompt);
       const plan = parseJsonBlock(raw);
       const picked = (Array.isArray(plan.itemIds) ? plan.itemIds : [])
         .map(id => items.find(x => x.id === id))
@@ -1180,14 +1172,14 @@ Trả về DUY NHẤT 1 JSON hợp lệ:
       }
       if (plan.title) $('lookName').value = String(plan.title).slice(0, 100);
       renderBoard();
-      mixOutfit();
+      renderCloset();
 
       const noteEl = $('aiNote');
       if (noteEl && plan.reason) {
-        noteEl.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> <strong>Gemini Stylist:</strong> ${esc(plan.reason)}`;
+        noteEl.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> <strong>AI Stylist:</strong> ${esc(plan.reason)}`;
         noteEl.classList.remove('hidden');
       }
-      toast('Gemini đã phối xong 1 set đồ cho bạn');
+      toast('AI đã phối xong 1 set đồ cho bạn');
     } catch (err) {
       toast('AI gợi ý thất bại: ' + (err?.message || err));
     } finally {
@@ -1197,72 +1189,42 @@ Trả về DUY NHẤT 1 JSON hợp lệ:
   };
 }
 
-// 11C. Tạo ảnh Ma-nơ-canh phối đồ (Gemini Vision đọc ảnh đồ thật -> dựng Ma-nơ-canh studio)
+// 11C. Tạo ảnh phối đồ AI qua MuseAI
 if ($('aiGenerateBtn')) {
   $('aiGenerateBtn').onclick = async () => {
     const selected = selectedPieces();
-    if (!selected.length) return toast('Hãy chọn ít nhất 1 món đồ trên bảng để xem trên ma-nơ-canh');
+    if (!selected.length) return toast('Hãy chọn ít nhất 1 món đồ trên bảng trước');
 
     const btn = $('aiGenerateBtn');
+    const oldHtml = btn.innerHTML;
     const box = $('aiResultBox');
     const stage = $('aiResultStage');
     btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
     box.classList.remove('hidden');
-    stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Bước 1/2: Đang đọc chi tiết từng món đồ thật...';
+    stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Đang tạo ảnh phối đồ (khoảng 30–50 giây)...';
 
     try {
-      const ai = getPuterAi();
-      const inputImages = selected.map(s => s.it.photo).filter(Boolean);
+      const garmentList = selected
+        .map((s, idx) => `${idx + 1}. ${s.cat}: ${s.it.name}${s.it.color ? ' (' + s.it.color + ')' : ''}${s.it.note ? ' - ' + s.it.note : ''}`)
+        .join('\n');
 
-      const describedItems = [];
-      for (const s of selected) {
-        const fallbackDesc = `${s.cat}: ${s.it.name}${s.it.color ? ' (' + s.it.color + ')' : ''}`;
-        if (!s.it.photo) {
-          describedItems.push(fallbackDesc);
-          continue;
-        }
-        try {
-          const visionPrompt = `Describe ONLY this single garment (${s.cat} - "${s.it.name}") in 1 concise factual English sentence for e-commerce product photography: exact color, silhouette/cut, neckline/collar, sleeves/length, fabric texture, and any pattern/buttons/belt. Do NOT mention backgrounds, hangers, or people.`;
-          const desc = await callGeminiChat(visionPrompt, s.it.photo);
-          describedItems.push(desc ? `${s.cat}: ${desc.trim()}` : fallbackDesc);
-        } catch (_) {
-          describedItems.push(fallbackDesc);
-        }
-      }
+      const prompt = `Clean realistic studio product photograph of a single minimalist headless boutique fashion mannequin (beige linen torso dress-form on a slim light wood stand, NO human, NO face, NO head, NO hair, NO skin) dressed neatly in ONLY the following exact outfit:\n${garmentList}\n\nRequirements:\n- Strictly match every garment's exact color, cut, style, and details listed above.\n- Do NOT invent extra jackets, bags, hats, or accessories not listed.\n- Front-facing full-length view centered in frame, crisp even daylight studio lighting, plain clean off-white seamless backdrop, realistic boutique e-commerce photography, no text, no watermarks.`;
 
-      stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Bước 2/2: Đang dựng ảnh Ma-nơ-canh (10–15 giây)...';
-
-      const garmentList = describedItems.map((d, idx) => `${idx + 1}. ${d}`).join('\n');
-      const prompt = `Clean realistic studio product photograph of a single minimalist headless boutique fashion mannequin (beige linen torso dress-form on a slim light wood stand, NO human, NO face, NO head, NO hair, NO skin) dressed neatly in ONLY the following exact outfit:\n${garmentList}\n\nRequirements:\n- Strictly match every garment's exact color, cut, collar, length, fabric drape, and pattern described above.\n- Do NOT invent extra jackets, bags, hats, or accessories not listed.\n- Front-facing full-length view centered in frame, crisp even daylight studio lighting, plain clean off-white seamless backdrop, realistic boutique e-commerce photography, no text, no watermarks.`;
-
-      const attempts = [
-        () => ai.txt2img(prompt, { input_images: inputImages }),
-        () => ai.txt2img(prompt)
-      ];
-      let imgEl = null;
-      let lastErr;
-
-      for (const run of attempts) {
-        try {
-          imgEl = await run();
-          if (imgEl) break;
-        } catch (err) {
-          lastErr = err;
-        }
-      }
-
-      if (!imgEl) throw lastErr || new Error('Không tạo được ảnh ma-nơ-canh');
-
-      lastAiImgElement = imgEl;
-      imgEl.alt = 'Ảnh Ma-nơ-canh phối đồ tạo bởi AI';
+      const dataUrl = await callMuseImage(prompt);
+      lastAiDataUrl = dataUrl;
+      const imgEl = document.createElement('img');
+      imgEl.src = dataUrl;
+      imgEl.alt = 'Ảnh phối đồ AI';
       stage.innerHTML = '';
       stage.appendChild(imgEl);
-      toast('Đã dựng xong ảnh Ma-nơ-canh phối đồ');
+      toast('Đã tạo xong ảnh phối đồ');
     } catch (err) {
       stage.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="margin-right:6px" aria-hidden="true"></i>' + esc(err?.message || String(err));
       toast('Không tạo được ảnh: ' + (err?.message || err));
     } finally {
       btn.disabled = false;
+      btn.innerHTML = oldHtml;
     }
   };
 }
@@ -1272,36 +1234,55 @@ if ($('closeAiResult')) {
 }
 
 if ($('downloadAiImg')) {
-  $('downloadAiImg').onclick = async () => {
-    if (!lastAiImgElement) return;
-    try {
-      const dataUrl = await imageElToDataUrl(lastAiImgElement);
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = `mai-anh-lookbook-${Date.now()}.png`;
-      a.click();
-      toast('Đã tải ảnh Lookbook về máy');
-    } catch (err) {
-      toast('Lỗi tải ảnh: ' + err.message);
-    }
+  $('downloadAiImg').onclick = () => {
+    if (!lastAiDataUrl) return;
+    const a = document.createElement('a');
+    a.href = lastAiDataUrl;
+    a.download = `mai-anh-lookbook-${Date.now()}.webp`;
+    a.click();
+    toast('Đã tải ảnh về máy');
   };
 }
 
-if ($('saveAiImgDrive')) {
-  $('saveAiImgDrive').onclick = async () => {
-    if (!lastAiImgElement) return;
-    const btn = $('saveAiImgDrive');
+// Lưu ảnh AI vừa tạo trực tiếp vào Bộ sưu tập (kèm tải ảnh lên Drive + đồng bộ)
+if ($('saveAiToLooks')) {
+  $('saveAiToLooks').onclick = async () => {
+    if (!lastAiDataUrl) return;
+    const btn = $('saveAiToLooks');
+    const oldHtml = btn.innerHTML;
     btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>Đang lưu...</span>';
     try {
-      toast('Đang lưu ảnh Lookbook lên Drive...');
-      const dataUrl = await imageElToDataUrl(lastAiImgElement);
-      const lookTitle = $('lookName')?.value.trim() || 'Lookbook-AI';
-      await uploadToAppsScript(dataUrl, `${lookTitle}-${Date.now()}.png`);
-      toast('Đã lưu ảnh Lookbook vào Drive');
+      const valid = Object.entries(board).filter(([s, id]) => items.some(i => i.id === id));
+      const name = $('lookName')?.value.trim() || `Outfit ${new Date().toLocaleDateString('vi-VN')}`;
+
+      let aiPhotoUrl = lastAiDataUrl;
+      if (appsScriptUrl && lastAiDataUrl.startsWith('data:image/')) {
+        try {
+          const driveRes = await uploadToAppsScript(lastAiDataUrl, `Lookbook-${name}-${Date.now()}.webp`);
+          if (driveRes?.url) aiPhotoUrl = driveRes.url;
+        } catch (err) {
+          console.warn('Không tải được ảnh Lookbook lên Drive, giữ cục bộ:', err.message);
+        }
+      }
+
+      const look = {
+        id: uuid(),
+        name,
+        board: Object.fromEntries(valid),
+        aiPhoto: aiPhotoUrl,
+        added: Date.now()
+      };
+
+      await persist('looks', look);
+      await reload();
+      syncDatabaseToDrive();
+      toast('Đã lưu vào Bộ sưu tập');
     } catch (err) {
-      toast('Lưu Drive thất bại: ' + err.message);
+      toast('Lưu thất bại: ' + (err?.message || err));
     } finally {
       btn.disabled = false;
+      btn.innerHTML = oldHtml;
     }
   };
 }
