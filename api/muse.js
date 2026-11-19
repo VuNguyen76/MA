@@ -8,6 +8,22 @@ async function safeJson(response) {
   }
 }
 
+// Chuyển URL ảnh (đặc biệt là link redirect Google Drive lh3) sang data URL base64 để server Muse đọc chính xác 100%
+async function toDataUrlIfRemote(imgStr) {
+  if (!imgStr || typeof imgStr !== 'string') return null;
+  if (imgStr.startsWith('data:image/')) return imgStr;
+  if (!imgStr.startsWith('http://') && !imgStr.startsWith('https://')) return imgStr;
+  try {
+    const r = await fetch(imgStr);
+    if (!r.ok) return imgStr;
+    const mime = r.headers.get('content-type') || 'image/png';
+    const buf = Buffer.from(await r.arrayBuffer());
+    return `data:${mime};base64,${buf.toString('base64')}`;
+  } catch (_) {
+    return imgStr;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -27,12 +43,23 @@ export default async function handler(req, res) {
     };
 
     if (body.action === 'chat') {
+      const messages = Array.isArray(body.messages) ? body.messages : [];
+      for (const msg of messages) {
+        if (Array.isArray(msg.content)) {
+          for (const part of msg.content) {
+            if (part?.type === 'image_url' && part.image_url?.url) {
+              part.image_url.url = await toDataUrlIfRemote(part.image_url.url);
+            }
+          }
+        }
+      }
+
       const r = await fetch(`${base}/chat/completions`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           model: 'muse-chat',
-          messages: body.messages || []
+          messages
         })
       });
       const { data, raw } = await safeJson(r);
@@ -45,15 +72,25 @@ export default async function handler(req, res) {
     }
 
     if (body.action === 'image') {
+      const rawImages = Array.isArray(body.images) ? body.images.filter(Boolean).slice(0, 4) : [];
+      const resolvedImages = await Promise.all(rawImages.map(toDataUrlIfRemote));
+
+      const payload = {
+        model: 'muse-image',
+        prompt: body.prompt || '',
+        n: 1,
+        size: '1024x1024'
+      };
+      if (resolvedImages.length === 1) {
+        payload.image = resolvedImages[0];
+      } else if (resolvedImages.length > 1) {
+        payload.image = resolvedImages;
+      }
+
       const r = await fetch(`${base}/images/generations`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          model: 'muse-image',
-          prompt: body.prompt || '',
-          n: 1,
-          size: '1024x1024'
-        })
+        body: JSON.stringify(payload)
       });
       const { data, raw } = await safeJson(r);
       if (!r.ok || !data) {

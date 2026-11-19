@@ -1147,8 +1147,8 @@ async function callMuseChat(prompt, imageUrl = null) {
   return data.text || '';
 }
 
-async function callMuseImage(prompt) {
-  const data = await callMuseApi({ action: 'image', prompt });
+async function callMuseImage(prompt, images = []) {
+  const data = await callMuseApi({ action: 'image', prompt, images });
   if (!data.dataUrl) throw new Error('API không trả về ảnh');
   return data.dataUrl;
 }
@@ -1184,7 +1184,7 @@ if ($('aiAutoTagBtn')) {
   };
 }
 
-// 11B. Tạo ảnh phối đồ AI qua MuseAI
+// 11B. Tạo ảnh phối đồ AI qua MuseAI (Bước 1: Chuẩn hóa hình dạng từng món từ ảnh gốc -> Bước 2: Ghép lên Ma-nơ-canh kèm ảnh tham chiếu)
 if ($('aiGenerateBtn')) {
   $('aiGenerateBtn').onclick = async () => {
     const selected = selectedPieces();
@@ -1197,16 +1197,44 @@ if ($('aiGenerateBtn')) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
     box.classList.remove('hidden');
-    stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Đang tạo ảnh phối đồ (khoảng 30–50 giây)...';
+    stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Bước 1/2: Đang bóc tách & chuẩn hóa hình dạng từng món từ ảnh gốc...';
 
     try {
-      const garmentList = selected
-        .map((s, idx) => `${idx + 1}. ${s.cat}: ${s.it.name}${s.it.color ? ' (' + s.it.color + ')' : ''}${s.it.note ? ' - ' + s.it.note : ''}`)
-        .join('\n');
+      const refImages = selected.map(s => s.it.photo).filter(Boolean).slice(0, 4);
 
-      const prompt = `Clean realistic studio product photograph of a single minimalist headless boutique fashion mannequin (beige linen torso dress-form on a slim light wood stand, NO human, NO face, NO head, NO hair, NO skin) dressed neatly in ONLY the following exact outfit:\n${garmentList}\n\nRequirements:\n- Strictly match every garment's exact color, cut, style, and details listed above.\n- Do NOT invent extra jackets, bags, hats, or accessories not listed.\n- Front-facing full-length view centered in frame, crisp even daylight studio lighting, plain clean off-white seamless backdrop, realistic boutique e-commerce photography, no text, no watermarks.`;
+      // Bước 1: Chuẩn hóa hình dạng & cấu trúc từng món từ ảnh gốc (song song để nhanh)
+      const normalizedSpecs = await Promise.all(
+        selected.map(async (s, idx) => {
+          const fallback = `[Reference Image #${idx + 1} - ${s.cat}: "${s.it.name}"${s.it.color ? ', color: ' + s.it.color : ''}${s.it.note ? ', detail: ' + s.it.note : ''}]`;
+          if (!s.it.photo) return fallback;
+          try {
+            const shapePrompt = `Look at this garment photo (${s.cat}: "${s.it.name}"). Ignore any human body, hands, hangers, props, or background. Normalize and describe ONLY the garment's exact physical geometry and appearance in 2 concise English sentences:
+1. Exact silhouette & outer contour (fit, length ratio, width of sleeves or trouser legs, hemline shape, collar/neckline structure, waist construction).
+2. Exact surface details (precise color shade/wash, fabric material & weight, pleats/ruffles/seams/pockets/tie-strings/buttons/prints).`;
+            const spec = await callMuseChat(shapePrompt, s.it.photo);
+            return spec ? `[Reference Image #${idx + 1} - ${s.cat} (${s.it.name})]: ${spec.trim()}` : fallback;
+          } catch (_) {
+            return fallback;
+          }
+        })
+      );
 
-      const dataUrl = await callMuseImage(prompt);
+      stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Bước 2/2: Đang ghép các món đã chuẩn hóa lên Ma-nơ-canh (30–45 giây)...';
+
+      const normalizedBlock = normalizedSpecs.join('\n\n');
+      const prompt = `Execute a strict two-stage garment reconstruction and outfit assembly using the attached reference image(s):
+
+STAGE 1 — GARMENT SHAPE NORMALIZATION (1:1 fidelity to reference images):
+Extract ONLY the standalone clothing item from each reference image (strip away any human body, hands, cups, hangers, or background). Reconstruct each garment into a clean, symmetrical, true-to-life 3D garment form preserving its EXACT geometry, outer contour, proportions, neckline, sleeve/leg width, hemline, seam construction, fabric texture, and exact color shade:
+${normalizedBlock}
+
+STAGE 2 — OUTFIT COMPOSITE ASSEMBLY:
+Dress ONLY the normalized garments from Stage 1 together in their natural wearing positions onto a single minimalist headless boutique dress-form mannequin (smooth beige linen torso on a slim light-oak stand; NO human, NO face, NO head, NO hair, NO hands, NO skin).
+- Preserve 100% of each garment's original shape, cut, wash, and structural details from the reference images without redesigning or simplifying them.
+- Do NOT add any extra clothing layers, belts, bags, hats, jewelry, or props not present in Stage 1.
+- Full-length front view centered in frame, neutral off-white seamless studio background, soft even commercial product lighting, sharp fabric texture.`;
+
+      const dataUrl = await callMuseImage(prompt, refImages);
       lastAiDataUrl = dataUrl;
       const imgEl = document.createElement('img');
       imgEl.src = dataUrl;
