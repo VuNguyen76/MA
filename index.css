@@ -314,9 +314,8 @@ button:active {
   display: flex;
   justify-content: center;
   margin-bottom: 24px;
-  position: sticky;
-  top: max(12px, var(--safe-top));
-  z-index: 30;
+  position: relative;
+  z-index: 10;
 }
 
 .studio-nav-track {
@@ -603,7 +602,7 @@ button:active {
 }
 
 .mixcanvas.empty::after {
-  content: 'Chọn đồ từ tủ rồi bấm “Mix đồ ngay” ♡';
+  content: 'Chọn đồ từ tủ rồi bấm “Mix đồ ngay”';
   position: absolute;
   inset: 24px;
   display: grid;
@@ -1331,33 +1330,45 @@ button:active {
   align-items: stretch;
 }
 
-.ai-model-chip {
+.empty-ico {
+  display: block;
+  font-size: 24px;
+  color: var(--sage-muted);
+  opacity: 0.45;
+  margin-bottom: 10px;
+}
+
+.slot-empty-ico {
+  font-size: 18px;
+  color: var(--sage-muted);
+  opacity: 0.35;
+  margin-bottom: 6px;
+}
+
+.btn-subtle,
+.btn-accent,
+.mode-option span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.item .actions .small {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 0 14px;
-  min-height: 44px;
-  border-radius: 999px;
-  background: var(--bg-subtle);
-  border: 1px solid var(--hairline-mid);
-  color: var(--text-main);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.25s var(--ease);
+  gap: 5px;
 }
 
-.ai-model-chip:hover {
-  background: var(--sage-light);
-  border-color: var(--sage-muted);
+.dropzone-icon {
+  font-size: 26px;
+  color: var(--sage-muted);
+  margin-bottom: 4px;
 }
 
-.ai-model-chip.has-photo {
-  background: var(--sage-light);
-  color: var(--sage-deep);
-  border-color: var(--sage-rich);
+.search-ico {
+  font-size: 13px;
+  color: var(--text-whisper);
 }
 
 .btn-ai {

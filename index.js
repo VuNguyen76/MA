@@ -202,7 +202,9 @@ async function fetchCloudDatabase(showToast = false) {
   if (!appsScriptUrl || isSyncing) return false;
   isSyncing = true;
   const statusEl = $('syncStatusText');
+  const iconEl = $('syncIcon');
   if (statusEl) statusEl.textContent = 'Đang tải...';
+  if (iconEl) iconEl.classList.add('fa-spin');
 
   try {
     const response = await fetch(appsScriptUrl, { method: 'GET' });
@@ -220,7 +222,6 @@ async function fetchCloudDatabase(showToast = false) {
       const localByFileId = new Map(localItems.filter(x => x.driveFileId).map(x => [x.driveFileId, x]));
       const deletedSet = new Set(Array.isArray(data.deletedFileIds) ? data.deletedFileIds : []);
 
-      // Xóa các món đã bị xóa từ thiết bị khác
       for (const local of localItems) {
         if (local.driveFileId && deletedSet.has(local.driveFileId)) {
           await req(tx('items', 'readwrite').delete(local.id));
@@ -242,8 +243,8 @@ async function fetchCloudDatabase(showToast = false) {
         }
       }
       await reload();
-      if (statusEl) statusEl.textContent = 'Đã đồng bộ ✓';
-      if (showToast) toast(`Đã đồng bộ ${data.items.length} món đồ từ Google Drive ☁`);
+      if (statusEl) statusEl.textContent = 'Đã đồng bộ';
+      if (showToast) toast(`Đã đồng bộ ${data.items.length} món đồ từ Drive`);
       return true;
     }
   } catch (err) {
@@ -251,11 +252,12 @@ async function fetchCloudDatabase(showToast = false) {
     if (showToast) toast('Chưa kết nối được Drive: ' + err.message);
   } finally {
     isSyncing = false;
+    if (iconEl) iconEl.classList.remove('fa-spin');
     setTimeout(() => {
-      if (statusEl && (statusEl.textContent.includes('✓') || statusEl.textContent === 'Đang tải...')) {
+      if (statusEl && (statusEl.textContent === 'Đã đồng bộ' || statusEl.textContent === 'Đang tải...')) {
         statusEl.textContent = 'Đồng bộ';
       }
-    }, 4000);
+    }, 3000);
   }
   return false;
 }
@@ -263,13 +265,14 @@ async function fetchCloudDatabase(showToast = false) {
 async function syncDatabaseToDrive(showToast = false, deletedFileIds = []) {
   if (!appsScriptUrl) return;
   const statusEl = $('syncStatusText');
+  const iconEl = $('syncIcon');
   if (statusEl) statusEl.textContent = 'Đang lưu...';
+  if (iconEl) iconEl.classList.add('fa-spin');
 
   try {
     const allItems = await req(tx('items').getAll());
     const allLooks = await req(tx('looks').getAll());
 
-    // Bỏ trường original base64 nặng trước khi ghi vào closet-db.json để đồng bộ nhanh & không lỗi quá dung lượng
     const lightItems = allItems.map(item => {
       const copy = { ...item };
       if (copy.original && copy.original.startsWith('data:image/')) {
@@ -298,17 +301,18 @@ async function syncDatabaseToDrive(showToast = false, deletedFileIds = []) {
     } catch (_) {}
 
     if (result.status === 'success') {
-      if (statusEl) statusEl.textContent = 'Đã lưu Drive ✓';
-      if (showToast) toast('Đã cập nhật dữ liệu tủ đồ lên Google Drive ☁');
+      if (statusEl) statusEl.textContent = 'Đã lưu';
+      if (showToast) toast('Đã cập nhật dữ liệu tủ đồ lên Drive');
     }
   } catch (err) {
     console.warn('Lỗi lưu dữ liệu lên Drive:', err.message);
   } finally {
+    if (iconEl) iconEl.classList.remove('fa-spin');
     setTimeout(() => {
-      if (statusEl && statusEl.textContent.includes('✓')) {
+      if (statusEl && statusEl.textContent === 'Đã lưu') {
         statusEl.textContent = 'Đồng bộ';
       }
-    }, 4000);
+    }, 3000);
   }
 }
 
@@ -351,7 +355,7 @@ function renderCloset() {
 
   const closetEl = $('closet');
   if (!shown.length) {
-    closetEl.innerHTML = `<div class="empty">Tủ đồ chưa có món nào ở mục này 🧺<br>Nhấn “Thêm đồ” để bắt đầu nhé!</div>`;
+    closetEl.innerHTML = `<div class="empty"><i class="fa-solid fa-shirt empty-ico" aria-hidden="true"></i>Tủ đồ chưa có món nào ở mục này<br>Nhấn “Thêm đồ” để bắt đầu nhé.</div>`;
     return;
   }
 
@@ -362,9 +366,9 @@ function renderCloset() {
         <div class="name" title="${esc(i.name)}">${esc(i.name)}</div>
         <div class="sub">${esc(i.cat)}${i.color ? ' · ' + esc(i.color) : ''}</div>
         <div class="actions">
-          <button type="button" class="small add" data-add="${esc(i.id)}">＋ Phối</button>
-          <button type="button" class="small" title="Sửa" data-edit="${esc(i.id)}">✎</button>
-          <button type="button" class="small" title="Xóa" data-delete="${esc(i.id)}">🗑</button>
+          <button type="button" class="small add" data-add="${esc(i.id)}"><i class="fa-solid fa-plus" aria-hidden="true"></i> Phối</button>
+          <button type="button" class="small" title="Sửa" aria-label="Sửa" data-edit="${esc(i.id)}"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i></button>
+          <button type="button" class="small" title="Xóa" aria-label="Xóa" data-delete="${esc(i.id)}"><i class="fa-regular fa-trash-can" aria-hidden="true"></i></button>
         </div>
       </div>
     </div>
@@ -372,8 +376,6 @@ function renderCloset() {
 
   closetEl.querySelectorAll('.item').forEach(el => {
     el.ondragstart = e => e.dataTransfer.setData('text/plain', el.dataset.id);
-    
-    // Chạm/Click bất kỳ đâu trên thẻ để phối đồ ngay (tiện lợi trên điện thoại & máy tính)
     el.onclick = e => {
       if (e.target.closest('[data-edit]') || e.target.closest('[data-delete]')) return;
       addToBoard(el.dataset.id);
@@ -400,7 +402,7 @@ function addToBoard(id, slot) {
   if (!it) return;
   board[slot || it.cat] = id;
   renderBoard();
-  toast('Đã thêm “' + it.name + '” vào outfit ✨');
+  toast('Đã thêm “' + it.name + '” vào outfit');
 }
 
 function renderBoard() {
@@ -412,11 +414,11 @@ function renderBoard() {
       <div class="slot ${it ? 'filled' : ''}" data-slot="${esc(c)}">
         <span class="slotlabel">${esc(c)}</span>
         ${it ? `
-          <button type="button" class="slotremove" data-remove="${esc(c)}" title="Bỏ khỏi outfit" aria-label="Bỏ khỏi outfit">×</button>
+          <button type="button" class="slotremove" data-remove="${esc(c)}" title="Bỏ khỏi outfit" aria-label="Bỏ khỏi outfit"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
           <img alt="${esc(it.name)}" src="${it.photo}">
           <div class="slotcaption">${esc(it.name)}</div>
         ` : `
-          <div style="font-size:24px;opacity:.3;margin-bottom:4px">＋</div>
+          <i class="fa-solid fa-plus slot-empty-ico" aria-hidden="true"></i>
           <div class="sub">Chạm hoặc thả vào đây</div>
         `}
       </div>
@@ -426,7 +428,6 @@ function renderBoard() {
   boardEl.querySelectorAll('.slot').forEach(s => {
     const slotName = s.dataset.slot;
 
-    // Kéo thả Desktop
     s.ondragover = e => {
       e.preventDefault();
       s.classList.add('dropdrag');
@@ -439,7 +440,6 @@ function renderBoard() {
       addToBoard(id, slotName);
     };
 
-    // Chạm/Click trên điện thoại & máy tính
     s.onclick = e => {
       if (e.target.closest('[data-remove]')) return;
       if (board[slotName]) {
@@ -447,11 +447,10 @@ function renderBoard() {
         renderBoard();
         toast(`Đã bỏ ${slotName} khỏi outfit`);
       } else {
-        // Tự động chuyển bộ lọc sang mục này để dễ chọn đồ
         activeFilter = slotName;
         renderFilters();
         renderCloset();
-        toast(`Đang lọc tủ đồ theo “${slotName}” ✿`);
+        toast(`Đang lọc tủ đồ theo “${slotName}”`);
       }
     };
   });
@@ -468,7 +467,7 @@ function renderBoard() {
 function renderLooks() {
   const grid = $('savedGrid');
   if (!looks.length) {
-    grid.innerHTML = '<div class="empty">Chưa có outfit nào trong Bộ sưu tập ♡<br>Qua tab Tủ đồ để phối set đầu tiên nhé.</div>';
+    grid.innerHTML = '<div class="empty"><i class="fa-regular fa-bookmark empty-ico" aria-hidden="true"></i>Chưa có outfit nào trong Bộ sưu tập<br>Qua tab Tủ đồ để phối set đầu tiên nhé.</div>';
     return;
   }
 
@@ -556,7 +555,7 @@ function mixOutfit() {
   if (!selected.length) {
     canvas.innerHTML = '';
     canvas.classList.add('empty');
-    toast('Hãy chọn ít nhất một món trước nha ♡');
+    toast('Hãy chọn ít nhất một món trước nha');
     return;
   }
 
@@ -584,7 +583,7 @@ function mixOutfit() {
     </figure>
   `).join('');
 
-  toast('Đã dàn set ' + selected.length + ' món lên Lookbook! 🌿');
+  toast('Đã dàn set ' + selected.length + ' món lên Lookbook');
 }
 
 // =============================================================================
@@ -781,10 +780,10 @@ async function processPhotos(files, mode = getBgMode()) {
         photo = await fastRemoveBackground(original, 38);
         removed = true;
         const dt = Math.round(performance.now() - t0);
-        $('bgStatus').textContent = `⚡ Đã tách nền siêu tốc trong ${dt}ms!`;
+        $('bgStatus').textContent = `Đã tách nền siêu tốc trong ${dt}ms.`;
       } else if (mode === 'ai') {
         try {
-          $('bgStatus').textContent = `✨ AI đang tách nền ảnh ${j + 1}/${files.length}...`;
+          $('bgStatus').textContent = `AI đang tách nền ảnh ${j + 1}/${files.length}...`;
           const removeBg = await getRemover();
           const inputBlob = await (await fetch(original)).blob();
           const outputBlob = await removeBg(inputBlob, {
@@ -807,9 +806,9 @@ async function processPhotos(files, mode = getBgMode()) {
 
     if (generation === photoGeneration) {
       if (mode === 'none') {
-        $('bgStatus').textContent = '🖼️ Đang giữ ảnh gốc nguyên bản.';
+        $('bgStatus').textContent = 'Đang giữ ảnh gốc nguyên bản.';
       } else {
-        $('bgStatus').textContent = `✅ Đã xử lý ${photos.length} ảnh tức thì! Sẵn sàng cất vào tủ.`;
+        $('bgStatus').textContent = `Đã xử lý ${photos.length} ảnh. Sẵn sàng cất vào tủ.`;
       }
     }
   } catch (err) {
@@ -913,7 +912,7 @@ $('submitItem').onclick = async () => {
         let driveFileId = old.driveFileId || null;
 
         if (appsScriptUrl && finalPhoto.startsWith('data:image/')) {
-          toast('Đang tải ảnh cập nhật lên Google Drive ☁...');
+          toast('Đang tải ảnh cập nhật lên Drive...');
           try {
             const driveRes = await uploadToAppsScript(finalPhoto, `${name || old.name || 'item'}-${Date.now()}.png`);
             finalPhoto = driveRes.url;
@@ -949,7 +948,7 @@ $('submitItem').onclick = async () => {
         let driveFileId = null;
 
         if (appsScriptUrl && p.photo.startsWith('data:image/')) {
-          toast(`Đang lưu ảnh ${j + 1}/${photos.length} vào Google Drive ☁...`);
+          toast(`Đang lưu ảnh ${j + 1}/${photos.length} lên Drive...`);
           try {
             const driveRes = await uploadToAppsScript(p.photo, `${name || cat}-${Date.now()}-${j}.png`);
             finalPhoto = driveRes.url;
@@ -977,7 +976,7 @@ $('submitItem').onclick = async () => {
 
     closeModal();
     await reload();
-    toast('Đã cất trang phục vào tủ! ♡');
+    toast('Đã cất trang phục vào tủ');
     syncDatabaseToDrive();
   } catch (e) {
     alert('Không lưu được đồ: ' + e.message);
@@ -989,7 +988,7 @@ $('submitItem').onclick = async () => {
 
 $('saveLook').onclick = async () => {
   const valid = Object.entries(board).filter(([s, id]) => items.some(i => i.id === id));
-  if (!valid.length) return toast('Thêm ít nhất một món vào outfit trước nha!');
+  if (!valid.length) return toast('Thêm ít nhất một món vào outfit trước nha');
 
   const name = $('lookName').value.trim() || `Outfit ${new Date().toLocaleDateString('vi-VN')}`;
   const look = {
@@ -1002,7 +1001,7 @@ $('saveLook').onclick = async () => {
   try {
     await persist('looks', look);
     await reload();
-    toast('Đã lưu outfit vào Bộ sưu tập! ♡');
+    toast('Đã lưu outfit vào Bộ sưu tập');
     syncDatabaseToDrive();
   } catch (e) {
     alert('Lưu outfit thất bại: ' + e.message);
@@ -1024,25 +1023,10 @@ $('dialogBack').onclick = e => {
 };
 
 // =============================================================================
-// 10. GOOGLE APPS SCRIPT ACTIONS & MODAL SETTINGS
+// 10. ĐIỀU HƯỚNG & ĐỒNG BỘ
 // =============================================================================
-if ($('settingsBtn')) {
-  $('settingsBtn').onclick = () => {
-    $('scriptUrlInput').value = appsScriptUrl;
-    $('settingsBack').classList.remove('hidden');
-  };
-}
-
-$('closeSettings').onclick = () => $('settingsBack').classList.add('hidden');
-$('settingsBack').onclick = e => {
-  if (e.target === $('settingsBack')) $('settingsBack').classList.add('hidden');
-};
-
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    closeModal();
-    $('settingsBack').classList.add('hidden');
-  }
+  if (e.key === 'Escape') closeModal();
 });
 
 document.querySelectorAll('.tab-pill, .tab').forEach(b => {
@@ -1051,153 +1035,18 @@ document.querySelectorAll('.tab-pill, .tab').forEach(b => {
 
 $('mixButton').onclick = mixOutfit;
 
-// Lưu URL Google Apps Script
-$('saveScriptUrlBtn').onclick = () => {
-  const val = $('scriptUrlInput').value.trim();
-  if (!val) return toast('Hãy dán link Web App vào ô trước nha');
-  appsScriptUrl = val;
-  localStorage.setItem(APPS_SCRIPT_KEY, appsScriptUrl);
-  toast('Đã lưu đường dẫn Google Apps Script!');
-  $('driveProgress').textContent = '✅ Đã lưu link Web App.';
-};
-
-// Kiểm tra kết nối với Google Apps Script
-$('testDriveBtn').onclick = async () => {
-  const val = $('scriptUrlInput').value.trim();
-  if (val) {
-    appsScriptUrl = val;
-    localStorage.setItem(APPS_SCRIPT_KEY, appsScriptUrl);
-  }
-
-  $('driveProgress').textContent = '⏳ Đang kiểm tra kết nối tới Google Drive của bạn...';
-  $('testDriveBtn').disabled = true;
-
-  try {
-    // Gửi test 1 ảnh pixel 1x1 trong suốt
-    const testPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-    const res = await uploadToAppsScript(testPixel, 'mai-anh-closet-test.png');
-    $('driveProgress').textContent = '✅ Kết nối Google Drive thành công! Thư mục “Mai Anh Closet” đã sẵn sàng lưu ảnh.';
-    toast('Kết nối Google Drive thành công ☁');
-  } catch (err) {
-    $('driveProgress').textContent = '⚠️ ' + err.message;
-  } finally {
-    $('testDriveBtn').disabled = false;
-  }
-};
-
-// Đồng bộ toàn bộ ảnh hiện có lên Drive
-$('driveSyncAllBtn').onclick = async () => {
-  const base64Items = items.filter(i => i.photo && i.photo.startsWith('data:image/'));
-  if (!base64Items.length) {
-    $('driveProgress').textContent = '✨ Tất cả ảnh đã được lưu trên Drive hoặc không có ảnh Base64.';
-    toast('Tất cả ảnh đã ở trên Google Drive rồi!');
-    return;
-  }
-
-  if (!confirm(`Tìm thấy ${base64Items.length} ảnh đang lưu trên máy. Bắt đầu tải toàn bộ lên Google Drive của bạn?`)) return;
-
-  $('driveSyncAllBtn').disabled = true;
-  let successCount = 0;
-
-  for (let idx = 0; idx < base64Items.length; idx++) {
-    const item = base64Items[idx];
-    $('driveProgress').textContent = `⏳ Đang tải ảnh ${idx + 1}/${base64Items.length}: “${item.name}” lên Drive...`;
-
-    try {
-      const driveRes = await uploadToAppsScript(item.photo, `${item.name}-${item.id}.png`);
-      item.photo = driveRes.url;
-      item.driveFileId = driveRes.id;
-      await persist('items', item);
-      successCount++;
-    } catch (err) {
-      console.error(`Lỗi tải item ${item.name}:`, err);
-    }
-  }
-
-  await reload();
-  $('driveSyncAllBtn').disabled = false;
-  $('driveProgress').textContent = `🎉 Hoàn tất! Đã tải ${successCount}/${base64Items.length} ảnh lên Google Drive và giải phóng bộ nhớ.`;
-  toast(`Đã đồng bộ ${successCount} ảnh lên Drive thành công ☁`);
-  await syncDatabaseToDrive();
-};
-
-// =============================================================================
-// 11. SAO LƯU & KHÔI PHỤC FILE DỰ PHÒNG JSON
-// =============================================================================
-$('backupBtn').onclick = async () => {
-  const payload = {
-    app: 'my-little-closet',
-    version: 5,
-    exportedAt: new Date().toISOString(),
-    items,
-    looks
-  };
-  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'mai-anh-closet-backup-' + new Date().toISOString().slice(0, 10) + '.json';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast('Đã tải bản sao lưu tủ đồ 💾');
-};
-
-$('restoreBtn').onclick = () => $('restoreInput').click();
-
-$('restoreInput').onchange = async e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  try {
-    const data = JSON.parse(await f.text());
-    if (data.app !== 'my-little-closet' || !Array.isArray(data.items) || !Array.isArray(data.looks)) {
-      throw Error('Không đúng file sao lưu tủ đồ');
-    }
-    if (!confirm(`Khôi phục ${data.items.length} món và ${data.looks.length} outfit? Dữ liệu từ file sẽ được gộp vào tủ hiện tại.`)) {
-      return;
-    }
-    for (const i of data.items) {
-      if (i.id && i.photo && i.cat) await persist('items', i);
-    }
-    for (const l of data.looks) {
-      if (l.id && l.board) await persist('looks', l);
-    }
-    await reload();
-    toast('Khôi phục tủ đồ thành công ♡');
-    syncDatabaseToDrive();
-  } catch (err) {
-    alert('Khôi phục thất bại: ' + err.message);
-  } finally {
-    e.target.value = '';
-  }
-};
-
 if ($('syncCloudBtn')) {
   $('syncCloudBtn').onclick = async () => {
-    toast('Đang đồng bộ dữ liệu với Google Drive ☁...');
+    toast('Đang đồng bộ dữ liệu với Drive...');
     await fetchCloudDatabase(true);
     await syncDatabaseToDrive();
   };
 }
 
 // =============================================================================
-// 12. GEMINI AI STUDIO QUA PUTER.JS (KHÔNG CẦN API KEY, XIN QUYỀN TRÊN WEB)
+// 11. GEMINI AI STUDIO QUA PUTER.JS
 // =============================================================================
-const MODEL_PHOTO_KEY = 'mai-anh-model-photo-v1';
-let modelPhotoData = localStorage.getItem(MODEL_PHOTO_KEY) || '';
 let lastAiImgElement = null;
-
-function refreshModelPhotoChip() {
-  const lbl = $('modelPhotoLabel');
-  const txt = $('modelPhotoText');
-  if (!lbl || !txt) return;
-  if (modelPhotoData) {
-    lbl.classList.add('has-photo');
-    txt.textContent = '👤 Đã có ảnh mẫu ✓';
-  } else {
-    lbl.classList.remove('has-photo');
-    txt.textContent = '👤 Ảnh người mẫu';
-  }
-}
 
 function getPuterAi() {
   if (!window.puter || !window.puter.ai) {
@@ -1247,34 +1096,14 @@ async function imageElToDataUrl(imgEl) {
   return await fileToDataURL(blob);
 }
 
-// 12A. Chọn ảnh dáng người mẫu (tùy chọn) để Gemini mặc thử đồ thật
-if ($('modelPhotoInput')) {
-  $('modelPhotoInput').onchange = async e => {
-    const f = e.target.files[0];
-    if (!f) return;
-    try {
-      modelPhotoData = await shrink(f);
-      try {
-        localStorage.setItem(MODEL_PHOTO_KEY, modelPhotoData);
-      } catch (_) {}
-      refreshModelPhotoChip();
-      toast('Đã lưu ảnh người mẫu để Gemini mặc thử 👤');
-    } catch (err) {
-      toast('Không đọc được ảnh mẫu: ' + err.message);
-    } finally {
-      e.target.value = '';
-    }
-  };
-}
-
-// 12B. Gemini Vision tự điền tên, loại, màu, dịp mặc khi thêm đồ mới
+// 11A. Gemini Vision tự điền tên, loại, màu, dịp mặc khi thêm đồ mới
 if ($('aiAutoTagBtn')) {
   $('aiAutoTagBtn').onclick = async () => {
-    if (!photos.length) return toast('Hãy chọn ảnh món đồ trước nhé!');
+    if (!photos.length) return toast('Hãy chọn ảnh món đồ trước nhé');
     const btn = $('aiAutoTagBtn');
-    const oldText = btn.textContent;
+    const oldHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.textContent = '✨ Gemini đang phân tích ảnh...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>Đang phân tích ảnh...</span>';
     try {
       const prompt = `Bạn là stylist thời trang. Nhìn ảnh trang phục này và trả về DUY NHẤT 1 JSON hợp lệ (không giải thích thêm):
 {"name":"Tên ngắn gọn tiếng Việt (VD: Áo sơ mi lụa trắng)","cat":"Chọn đúng 1 trong: ${CATS.join(', ')}","color":"Màu chủ đạo tiếng Việt","season":"Chọn đúng 1 trong: Đi làm, Đi chơi dạo phố, Dự tiệc, Du lịch, Mặc ở nhà","note":"Gợi ý phối đồ ngắn dưới 12 từ"}`;
@@ -1288,24 +1117,24 @@ if ($('aiAutoTagBtn')) {
         if (opts.includes(info.season)) $('itemSeason').value = info.season;
       }
       if (info.note) $('itemNote').value = String(info.note).slice(0, 250);
-      toast('Gemini đã tự điền thông tin món đồ ✨');
+      toast('Gemini đã tự điền thông tin món đồ');
     } catch (err) {
       toast('Gemini chưa phân tích được: ' + (err?.message || err));
     } finally {
       btn.disabled = false;
-      btn.textContent = oldText;
+      btn.innerHTML = oldHtml;
     }
   };
 }
 
-// 12C. Gemini AI Stylist tự chọn set đồ hợp gu từ tủ đồ hiện có
+// 11B. Gemini AI Stylist tự chọn set đồ hợp gu từ tủ đồ hiện có
 if ($('aiStylistBtn')) {
   $('aiStylistBtn').onclick = async () => {
-    if (items.length < 2) return toast('Cần ít nhất 2 món đồ trong tủ để AI phối nhé!');
+    if (items.length < 2) return toast('Cần ít nhất 2 món đồ trong tủ để AI phối');
     const btn = $('aiStylistBtn');
-    const oldText = btn.textContent;
+    const oldHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.textContent = '⏳ Đang phối...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>Đang phối...</span>';
     try {
       const catalog = items.map(i => ({
         id: i.id,
@@ -1336,37 +1165,36 @@ Trả về DUY NHẤT 1 JSON hợp lệ:
 
       const noteEl = $('aiNote');
       if (noteEl && plan.reason) {
-        noteEl.textContent = '✨ Gemini Stylist: ' + plan.reason;
+        noteEl.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> <strong>Gemini Stylist:</strong> ${esc(plan.reason)}`;
         noteEl.classList.remove('hidden');
       }
-      toast('Gemini đã phối xong 1 set đồ cho bạn ✨');
+      toast('Gemini đã phối xong 1 set đồ cho bạn');
     } catch (err) {
       toast('AI gợi ý thất bại: ' + (err?.message || err));
     } finally {
       btn.disabled = false;
-      btn.textContent = oldText;
+      btn.innerHTML = oldHtml;
     }
   };
 }
 
-// 12D. Tạo ảnh Ma-nơ-canh phối đồ (Gemini Vision đọc ảnh đồ thật -> dựng Ma-nơ-canh studio)
+// 11C. Tạo ảnh Ma-nơ-canh phối đồ (Gemini Vision đọc ảnh đồ thật -> dựng Ma-nơ-canh studio)
 if ($('aiGenerateBtn')) {
   $('aiGenerateBtn').onclick = async () => {
     const selected = selectedPieces();
-    if (!selected.length) return toast('Hãy chọn ít nhất 1 món đồ trên bảng để xem trên ma-nơ-canh!');
+    if (!selected.length) return toast('Hãy chọn ít nhất 1 món đồ trên bảng để xem trên ma-nơ-canh');
 
     const btn = $('aiGenerateBtn');
     const box = $('aiResultBox');
     const stage = $('aiResultStage');
     btn.disabled = true;
     box.classList.remove('hidden');
-    stage.innerHTML = '✨ Bước 1/2: Gemini đang đọc chi tiết từng món đồ thật của bạn...';
+    stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Bước 1/2: Đang đọc chi tiết từng món đồ thật...';
 
     try {
       const ai = getPuterAi();
       const inputImages = selected.map(s => s.it.photo).filter(Boolean);
 
-      // Bước 1: Dùng Gemini Vision phân tích chính xác kiểu dáng, màu sắc, chất liệu từng món đồ thật
       const describedItems = [];
       for (const s of selected) {
         const fallbackDesc = `${s.cat}: ${s.it.name}${s.it.color ? ' (' + s.it.color + ')' : ''}`;
@@ -1383,7 +1211,7 @@ if ($('aiGenerateBtn')) {
         }
       }
 
-      stage.innerHTML = '✨ Bước 2/2: Đang dựng ảnh Ma-nơ-canh mặc đúng set đồ (khoảng 10–15 giây)...';
+      stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Bước 2/2: Đang dựng ảnh Ma-nơ-canh (10–15 giây)...';
 
       const garmentList = describedItems.map((d, idx) => `${idx + 1}. ${d}`).join('\n');
       const prompt = `Clean realistic studio product photograph of a single minimalist headless boutique fashion mannequin (beige linen torso dress-form on a slim light wood stand, NO human, NO face, NO head, NO hair, NO skin) dressed neatly in ONLY the following exact outfit:\n${garmentList}\n\nRequirements:\n- Strictly match every garment's exact color, cut, collar, length, fabric drape, and pattern described above.\n- Do NOT invent extra jackets, bags, hats, or accessories not listed.\n- Front-facing full-length view centered in frame, crisp even daylight studio lighting, plain clean off-white seamless backdrop, realistic boutique e-commerce photography, no text, no watermarks.`;
@@ -1410,9 +1238,9 @@ if ($('aiGenerateBtn')) {
       imgEl.alt = 'Ảnh Ma-nơ-canh phối đồ tạo bởi AI';
       stage.innerHTML = '';
       stage.appendChild(imgEl);
-      toast('Đã dựng xong ảnh Ma-nơ-canh phối đồ ✨');
+      toast('Đã dựng xong ảnh Ma-nơ-canh phối đồ');
     } catch (err) {
-      stage.innerHTML = '⚠️ ' + esc(err?.message || String(err));
+      stage.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="margin-right:6px" aria-hidden="true"></i>' + esc(err?.message || String(err));
       toast('Không tạo được ảnh: ' + (err?.message || err));
     } finally {
       btn.disabled = false;
@@ -1433,7 +1261,7 @@ if ($('downloadAiImg')) {
       a.href = dataUrl;
       a.download = `mai-anh-lookbook-${Date.now()}.png`;
       a.click();
-      toast('Đã tải ảnh Lookbook về máy ⬇');
+      toast('Đã tải ảnh Lookbook về máy');
     } catch (err) {
       toast('Lỗi tải ảnh: ' + err.message);
     }
@@ -1446,11 +1274,11 @@ if ($('saveAiImgDrive')) {
     const btn = $('saveAiImgDrive');
     btn.disabled = true;
     try {
-      toast('Đang lưu ảnh Lookbook lên Google Drive ☁...');
+      toast('Đang lưu ảnh Lookbook lên Drive...');
       const dataUrl = await imageElToDataUrl(lastAiImgElement);
       const lookTitle = $('lookName')?.value.trim() || 'Lookbook-AI';
       await uploadToAppsScript(dataUrl, `${lookTitle}-${Date.now()}.png`);
-      toast('Đã lưu ảnh Lookbook vào Google Drive ☁✨');
+      toast('Đã lưu ảnh Lookbook vào Drive');
     } catch (err) {
       toast('Lưu Drive thất bại: ' + err.message);
     } finally {
@@ -1460,15 +1288,13 @@ if ($('saveAiImgDrive')) {
 }
 
 // =============================================================================
-// 13. KHỞI CHẠY ỨNG DỤNG
+// 12. KHỞI CHẠY ỨNG DỤNG
 // =============================================================================
 (async () => {
   try {
-    refreshModelPhotoChip();
     $('itemCat').innerHTML = CATS.map(c => `<option>${c}</option>`).join('');
     db = await openDB();
     await reload();
-    // Tự động tải dữ liệu mới nhất từ Google Drive về máy khi mở app
     fetchCloudDatabase(false);
   } catch (e) {
     toast('Trình duyệt chặn lưu dữ liệu: ' + esc(e.message));
