@@ -1349,36 +1349,45 @@ Trả về DUY NHẤT 1 JSON hợp lệ:
   };
 }
 
-// 12D. Gemini Image (Nano Banana) tạo ảnh Lookbook / Mặc thử đồ thật
+// 12D. Tạo ảnh Ma-nơ-canh phối đồ (Gemini Vision đọc ảnh đồ thật -> dựng Ma-nơ-canh studio)
 if ($('aiGenerateBtn')) {
   $('aiGenerateBtn').onclick = async () => {
     const selected = selectedPieces();
-    if (!selected.length) return toast('Hãy chọn ít nhất 1 món đồ trên bảng để tạo ảnh AI!');
+    if (!selected.length) return toast('Hãy chọn ít nhất 1 món đồ trên bảng để xem trên ma-nơ-canh!');
 
     const btn = $('aiGenerateBtn');
     const box = $('aiResultBox');
     const stage = $('aiResultStage');
     btn.disabled = true;
     box.classList.remove('hidden');
-    stage.innerHTML = '✨ Gemini đang tạo ảnh Lookbook cho set đồ của bạn (khoảng 10–25 giây)...';
+    stage.innerHTML = '✨ Bước 1/2: Gemini đang đọc chi tiết từng món đồ thật của bạn...';
 
     try {
       const ai = getPuterAi();
-      const inputImages = [];
-      if (modelPhotoData) inputImages.push(modelPhotoData);
+      const inputImages = selected.map(s => s.it.photo).filter(Boolean);
+
+      // Bước 1: Dùng Gemini Vision phân tích chính xác kiểu dáng, màu sắc, chất liệu từng món đồ thật
+      const describedItems = [];
       for (const s of selected) {
-        if (s.it.photo) inputImages.push(s.it.photo);
+        const fallbackDesc = `${s.cat}: ${s.it.name}${s.it.color ? ' (' + s.it.color + ')' : ''}`;
+        if (!s.it.photo) {
+          describedItems.push(fallbackDesc);
+          continue;
+        }
+        try {
+          const visionPrompt = `Describe ONLY this single garment (${s.cat} - "${s.it.name}") in 1 concise factual English sentence for e-commerce product photography: exact color, silhouette/cut, neckline/collar, sleeves/length, fabric texture, and any pattern/buttons/belt. Do NOT mention backgrounds, hangers, or people.`;
+          const desc = await callGeminiChat(visionPrompt, s.it.photo);
+          describedItems.push(desc ? `${s.cat}: ${desc.trim()}` : fallbackDesc);
+        } catch (_) {
+          describedItems.push(fallbackDesc);
+        }
       }
 
-      const garmentDesc = selected
-        .map(s => `${s.cat}: ${s.it.name}${s.it.color ? ' (' + s.it.color + ')' : ''}`)
-        .join(', ');
+      stage.innerHTML = '✨ Bước 2/2: Đang dựng ảnh Ma-nơ-canh mặc đúng set đồ (khoảng 10–15 giây)...';
 
-      const prompt = modelPhotoData
-        ? `Realistic full-body fashion try-on photograph of the exact person from the first reference image wearing the exact outfit from the remaining garment images (${garmentDesc}). Preserve the person's exact face, hairstyle, body proportions, and every garment's exact color, pattern, cut, and fabric texture. Natural soft daylight, clean minimalist warm cream studio background, high-fashion Kinfolk editorial lookbook photography.`
-        : `High-fashion Kinfolk editorial full-body lookbook photograph of a stylish young Vietnamese female model wearing the exact clothing items shown in the reference images (${garmentDesc}). Preserve every garment's exact color, pattern, silhouette, and fabric detail accurately. Soft natural window light, clean minimalist warm cream linen studio backdrop, realistic fashion photography.`;
+      const garmentList = describedItems.map((d, idx) => `${idx + 1}. ${d}`).join('\n');
+      const prompt = `Clean realistic studio product photograph of a single minimalist headless boutique fashion mannequin (beige linen torso dress-form on a slim light wood stand, NO human, NO face, NO head, NO hair, NO skin) dressed neatly in ONLY the following exact outfit:\n${garmentList}\n\nRequirements:\n- Strictly match every garment's exact color, cut, collar, length, fabric drape, and pattern described above.\n- Do NOT invent extra jackets, bags, hats, or accessories not listed.\n- Front-facing full-length view centered in frame, crisp even daylight studio lighting, plain clean off-white seamless backdrop, realistic boutique e-commerce photography, no text, no watermarks.`;
 
-      // Gọi model mặc định trên Puter (hỗ trợ miễn phí, không bị lỗi 402 hết credit) kèm input_images
       const attempts = [
         () => ai.txt2img(prompt, { input_images: inputImages }),
         () => ai.txt2img(prompt)
@@ -1395,16 +1404,16 @@ if ($('aiGenerateBtn')) {
         }
       }
 
-      if (!imgEl) throw lastErr || new Error('Không tạo được ảnh từ Gemini');
+      if (!imgEl) throw lastErr || new Error('Không tạo được ảnh ma-nơ-canh');
 
       lastAiImgElement = imgEl;
-      imgEl.alt = 'Ảnh Lookbook tạo bởi Gemini AI';
+      imgEl.alt = 'Ảnh Ma-nơ-canh phối đồ tạo bởi AI';
       stage.innerHTML = '';
       stage.appendChild(imgEl);
-      toast('Gemini đã tạo xong ảnh Lookbook ✨');
+      toast('Đã dựng xong ảnh Ma-nơ-canh phối đồ ✨');
     } catch (err) {
       stage.innerHTML = '⚠️ ' + esc(err?.message || String(err));
-      toast('Không tạo được ảnh AI: ' + (err?.message || err));
+      toast('Không tạo được ảnh: ' + (err?.message || err));
     } finally {
       btn.disabled = false;
     }
