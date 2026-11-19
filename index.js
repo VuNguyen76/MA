@@ -575,14 +575,14 @@ let removeBackgroundFn = null;
 async function getRemover() {
   if (removeBackgroundFn) return removeBackgroundFn;
   try {
-    // Ưu tiên load từ node_modules cục bộ đã cài qua npm
-    const mod = await import('./node_modules/@imgly/background-removal/dist/index.mjs');
+    // Load từ package npm đã cài đặt
+    const mod = await import('@imgly/background-removal');
     if (typeof mod.removeBackground === 'function') {
       removeBackgroundFn = mod.removeBackground;
       return removeBackgroundFn;
     }
   } catch (localErr) {
-    // Fallback qua CDN khi mở file tĩnh hoặc môi trường chưa hỗ trợ
+    // Fallback qua CDN nếu môi trường không hỗ trợ bundle cục bộ
   }
   const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm');
   if (typeof mod.removeBackground !== 'function') throw new Error('Không khởi tạo được AI tách nền');

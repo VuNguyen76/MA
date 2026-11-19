@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "echo 'Static site ready'",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "repository": {
     "type": "git",
@@ -21,5 +22,8 @@
   "homepage": "https://github.com/VuNguyen76/MA#readme",
   "dependencies": {
     "@imgly/background-removal": "^1.7.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.8"
   }
 }
