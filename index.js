@@ -1118,6 +1118,24 @@ function parseJsonBlock(rawText) {
   return JSON.parse(match ? match[0] : cleaned);
 }
 
+async function callMuseApi(payload) {
+  const res = await fetch('/api/muse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const raw = await res.text();
+  let data = null;
+  try {
+    data = JSON.parse(raw);
+  } catch (_) {}
+  if (!res.ok) {
+    throw new Error(data?.error || (raw ? raw.slice(0, 140) : `HTTP ${res.status}`));
+  }
+  if (!data) throw new Error('Phản hồi server không hợp lệ');
+  return data;
+}
+
 async function callMuseChat(prompt, imageUrl = null) {
   const content = imageUrl
     ? [
@@ -1125,28 +1143,12 @@ async function callMuseChat(prompt, imageUrl = null) {
         { type: 'image_url', image_url: { url: imageUrl } }
       ]
     : prompt;
-
-  const res = await fetch('/api/muse', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'chat',
-      messages: [{ role: 'user', content }]
-    })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  const data = await callMuseApi({ action: 'chat', messages: [{ role: 'user', content }] });
   return data.text || '';
 }
 
 async function callMuseImage(prompt) {
-  const res = await fetch('/api/muse', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'image', prompt })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  const data = await callMuseApi({ action: 'image', prompt });
   if (!data.dataUrl) throw new Error('API không trả về ảnh');
   return data.dataUrl;
 }
@@ -1182,58 +1184,7 @@ if ($('aiAutoTagBtn')) {
   };
 }
 
-// 11B. AI Stylist tự chọn set đồ hợp gu từ tủ đồ hiện có
-if ($('aiStylistBtn')) {
-  $('aiStylistBtn').onclick = async () => {
-    if (items.length < 2) return toast('Cần ít nhất 2 món đồ trong tủ để AI phối');
-    const btn = $('aiStylistBtn');
-    const oldHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>Đang phối...</span>';
-    try {
-      const catalog = items.map(i => ({
-        id: i.id,
-        name: i.name,
-        cat: i.cat,
-        color: i.color || '',
-        season: i.season || ''
-      }));
-      const prompt = `Bạn là stylist thời trang cao cấp. Từ tủ đồ JSON sau:
-${JSON.stringify(catalog)}
-Hãy chọn 1 set outfit đẹp nhất (2 đến 4 món khác loại; nếu chọn "Váy liền" thì không chọn "Quần"/"Chân váy").
-Trả về DUY NHẤT 1 JSON hợp lệ:
-{"itemIds":["id1","id2"],"title":"Tên outfit tiếng Việt ngắn gọn","reason":"Nhận xét phối đồ 1 câu ngắn tiếng Việt"}`;
-      const raw = await callMuseChat(prompt);
-      const plan = parseJsonBlock(raw);
-      const picked = (Array.isArray(plan.itemIds) ? plan.itemIds : [])
-        .map(id => items.find(x => x.id === id))
-        .filter(Boolean);
-      if (!picked.length) throw new Error('AI chưa chọn được món phù hợp');
-
-      board = {};
-      for (const it of picked) {
-        board[it.cat] = it.id;
-      }
-      if (plan.title) $('lookName').value = String(plan.title).slice(0, 100);
-      renderBoard();
-      renderCloset();
-
-      const noteEl = $('aiNote');
-      if (noteEl && plan.reason) {
-        noteEl.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> <strong>AI Stylist:</strong> ${esc(plan.reason)}`;
-        noteEl.classList.remove('hidden');
-      }
-      toast('AI đã phối xong 1 set đồ cho bạn');
-    } catch (err) {
-      toast('AI gợi ý thất bại: ' + (err?.message || err));
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = oldHtml;
-    }
-  };
-}
-
-// 11C. Tạo ảnh phối đồ AI qua MuseAI
+// 11B. Tạo ảnh phối đồ AI qua MuseAI
 if ($('aiGenerateBtn')) {
   $('aiGenerateBtn').onclick = async () => {
     const selected = selectedPieces();

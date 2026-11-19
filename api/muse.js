@@ -1,4 +1,13 @@
 // Vercel Serverless proxy cho MuseAI API (tránh Mixed Content HTTP/HTTPS, CORS và giấu API key)
+async function safeJson(response) {
+  const raw = await response.text();
+  try {
+    return { data: JSON.parse(raw), raw };
+  } catch (_) {
+    return { data: null, raw };
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -11,7 +20,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const headers = {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
@@ -26,8 +35,11 @@ export default async function handler(req, res) {
           messages: body.messages || []
         })
       });
-      const data = await r.json();
-      if (!r.ok) return res.status(r.status).json({ error: data?.error?.message || 'Lỗi muse-chat' });
+      const { data, raw } = await safeJson(r);
+      if (!r.ok || !data) {
+        const msg = data?.error?.message || data?.error || (raw ? raw.slice(0, 140) : `HTTP ${r.status}`);
+        return res.status(r.status >= 400 ? r.status : 502).json({ error: `Server Muse bận (${r.status}): ${msg}` });
+      }
       const text = data?.choices?.[0]?.message?.content || '';
       return res.status(200).json({ text });
     }
@@ -43,8 +55,11 @@ export default async function handler(req, res) {
           size: '1024x1024'
         })
       });
-      const data = await r.json();
-      if (!r.ok) return res.status(r.status).json({ error: data?.error?.message || 'Lỗi muse-image' });
+      const { data, raw } = await safeJson(r);
+      if (!r.ok || !data) {
+        const msg = data?.error?.message || data?.error || (raw ? raw.slice(0, 140) : `HTTP ${r.status}`);
+        return res.status(r.status >= 400 ? r.status : 502).json({ error: `Server Muse bận (${r.status}): ${msg}` });
+      }
 
       const first = data?.data?.[0];
       if (first?.b64_json) {
@@ -54,7 +69,6 @@ export default async function handler(req, res) {
         return res.status(502).json({ error: 'API không trả về ảnh' });
       }
 
-      // Tải ảnh HTTP từ VPS về dạng base64 dataURL để trang HTTPS hiển thị không bị chặn Mixed Content
       const imgRes = await fetch(first.url);
       if (!imgRes.ok) return res.status(502).json({ error: 'Không tải được ảnh từ server Muse' });
       const mime = imgRes.headers.get('content-type') || 'image/webp';
