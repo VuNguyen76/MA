@@ -1684,3 +1684,77 @@ button:active {
   object-fit: cover;
   display: block;
 }
+
+.ai-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.look-ai-wrap {
+  position: relative;
+}
+
+.look-zoom-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(15, 25, 19, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  gap: 14px;
+}
+
+.lightbox.hidden {
+  display: none;
+}
+
+.lightbox img {
+  max-width: 94vw;
+  max-height: 84dvh;
+  object-fit: contain;
+  border-radius: 16px;
+  background: #FAF8F5;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.lightbox-caption {
+  color: rgba(250, 248, 245, 0.9);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.lightbox-close {
+  position: fixed;
+  top: max(18px, var(--safe-top));
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: #FAF8F5;
+  font-size: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s var(--ease), background 0.2s;
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.24);
+  transform: scale(1.06);
+}

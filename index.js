@@ -369,6 +369,7 @@ function renderCloset() {
         <img src="${i.photo}" alt="${esc(i.name)}" loading="lazy">
         ${isSelected ? '<span class="item-picked-badge" title="Đang trong outfit"><i class="fa-solid fa-check" aria-hidden="true"></i></span>' : ''}
         <div class="item-hover-actions">
+          <button type="button" class="item-fab" title="Xem toàn màn hình" aria-label="Xem toàn màn hình" data-zoom="${esc(i.id)}"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i></button>
           <button type="button" class="item-fab" title="Sửa" aria-label="Sửa" data-edit="${esc(i.id)}"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i></button>
           <button type="button" class="item-fab item-fab-danger" title="Xóa" aria-label="Xóa" data-delete="${esc(i.id)}"><i class="fa-regular fa-trash-can" aria-hidden="true"></i></button>
         </div>
@@ -383,7 +384,7 @@ function renderCloset() {
   closetEl.querySelectorAll('.item').forEach(el => {
     el.ondragstart = e => e.dataTransfer.setData('text/plain', el.dataset.id);
     el.onclick = e => {
-      if (e.target.closest('[data-edit]') || e.target.closest('[data-delete]')) return;
+      if (e.target.closest('[data-zoom]') || e.target.closest('[data-edit]') || e.target.closest('[data-delete]')) return;
       const id = el.dataset.id;
       const existingSlot = Object.keys(board).find(k => board[k] === id);
       if (existingSlot) {
@@ -393,6 +394,14 @@ function renderCloset() {
       } else {
         addToBoard(id);
       }
+    };
+  });
+
+  closetEl.querySelectorAll('[data-zoom]').forEach(el => {
+    el.onclick = e => {
+      e.stopPropagation();
+      const it = items.find(x => x.id === el.dataset.zoom);
+      if (it) openLightbox(it.photo, it.name);
     };
   });
 
@@ -496,7 +505,7 @@ function renderLooks() {
 
     return `
       <article class="lookcard">
-        ${l.aiPhoto ? `<div class="look-ai-wrap"><img class="look-ai-thumb" src="${l.aiPhoto}" alt="${esc(l.name)}" loading="lazy"></div>` : ''}
+        ${l.aiPhoto ? `<div class="look-ai-wrap"><img class="look-ai-thumb" src="${l.aiPhoto}" alt="${esc(l.name)}" loading="lazy"><button type="button" class="item-fab look-zoom-btn" title="Xem toàn màn hình" aria-label="Xem toàn màn hình" data-zoom-look="${esc(l.id)}"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i></button></div>` : ''}
         <div class="lookpics">
           ${selected.slice(0, 6).map(x => `
             <img src="${x.it.photo}" title="${esc(x.slot)}: ${esc(x.it.name)}" alt="${esc(x.it.name)}">
@@ -511,6 +520,13 @@ function renderLooks() {
       </article>
     `;
   }).join('');
+
+  grid.querySelectorAll('[data-zoom-look]').forEach(b => {
+    b.onclick = () => {
+      const l = looks.find(x => x.id === b.dataset.zoomLook);
+      if (l?.aiPhoto) openLightbox(l.aiPhoto, l.name);
+    };
+  });
 
   grid.querySelectorAll('[data-load]').forEach(b => {
     b.onclick = () => {
@@ -1047,8 +1063,36 @@ $('dialogBack').onclick = e => {
 // =============================================================================
 // 10. ĐIỀU HƯỚNG & ĐỒNG BỘ
 // =============================================================================
+function openLightbox(src, caption = '') {
+  if (!src || !$('lightbox')) return;
+  $('lightboxImg').src = src;
+  $('lightboxImg').alt = caption;
+  $('lightboxCaption').textContent = caption;
+  $('lightbox').classList.remove('hidden');
+}
+
+function closeLightbox() {
+  $('lightbox')?.classList.add('hidden');
+}
+
+if ($('closeLightbox')) $('closeLightbox').onclick = closeLightbox;
+if ($('lightbox')) {
+  $('lightbox').onclick = e => {
+    if (e.target === $('lightbox')) closeLightbox();
+  };
+}
+
+if ($('zoomAiImg')) {
+  $('zoomAiImg').onclick = () => {
+    if (lastAiDataUrl) openLightbox(lastAiDataUrl, $('lookName')?.value.trim() || 'Ảnh phối đồ AI');
+  };
+}
+
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') {
+    closeModal();
+    closeLightbox();
+  }
 });
 
 document.querySelectorAll('.tab-pill, .tab').forEach(b => {

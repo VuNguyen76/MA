@@ -116,9 +116,14 @@
             <div id="aiResultBox" class="ai-result-box hidden">
               <div class="ai-result-head">
                 <span class="artboard-label"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></span>
-                <button type="button" class="btn-close-sm" id="closeAiResult" aria-label="Đóng">
-                  <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                </button>
+                <div class="ai-head-actions">
+                  <button type="button" class="btn-close-sm" id="zoomAiImg" title="Xem toàn màn hình" aria-label="Xem toàn màn hình">
+                    <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="btn-close-sm" id="closeAiResult" aria-label="Đóng">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                  </button>
+                </div>
               </div>
               <div id="aiResultStage" class="ai-result-stage"></div>
               <div class="ai-result-actions">
@@ -255,6 +260,15 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- LIGHTBOX XEM ẢNH TOÀN MÀN HÌNH -->
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Xem ảnh toàn màn hình">
+    <button type="button" class="lightbox-close" id="closeLightbox" aria-label="Đóng">
+      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+    </button>
+    <img id="lightboxImg" src="" alt="" />
+    <div id="lightboxCaption" class="lightbox-caption"></div>
   </div>
 
   <div id="toast" class="toast hidden" role="alert"></div>
