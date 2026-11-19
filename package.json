@@ -1,0 +1,24 @@
+{
+  "name": "ma",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VuNguyen76/MA.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/VuNguyen76/MA/issues"
+  },
+  "homepage": "https://github.com/VuNguyen76/MA#readme",
+  "dependencies": {
+    "@imgly/background-removal": "^1.7.0"
+  }
+}

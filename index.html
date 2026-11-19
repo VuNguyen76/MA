@@ -2,231 +2,307 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>Mai Anh’s Green Closet — Fashion Illustration & Style Studio</title>
+  <title>Mai Anh’s Green Closet — Fashion Studio</title>
   
-  <!-- Thẻ meta tối ưu cho thiết bị di động & điện thoại (PWA/Responsive) -->
+  <!-- Thẻ meta tối ưu cho điện thoại & di động -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#35734e" />
+  <meta name="theme-color" content="#1a3323" />
   <meta name="color-scheme" content="light" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Mai Anh Closet" />
   <meta name="application-name" content="Mai Anh’s Green Closet" />
   <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-  <meta name="description" content="Tủ đồ ảo & Phối đồ thời trang cá nhân của Mai Anh — Chụp đồ, cất vào tủ, mix & match mỗi ngày." />
+  <meta name="description" content="Tủ đồ cá nhân của Mai Anh — Số hóa trang phục, tách nền AI và Mix & Match mỗi ngày." />
 
-  <!-- Tách stylesheet riêng -->
+  <!-- Typography cao cấp: Plus Jakarta Sans & Playfair Display -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
   <link rel="stylesheet" href="index.css" />
 </head>
 <body>
+  <!-- Ambient Lighting Layer -->
+  <div class="ambient-glow glow-top" aria-hidden="true"></div>
+  <div class="ambient-glow glow-bottom" aria-hidden="true"></div>
+
   <div class="shell">
-    <header class="head">
-      <div>
-        <div class="eyebrow">YOUR GREEN STYLE STUDIO ✿</div>
-        <h1>Mai Anh’s Green Closet</h1>
-        <p>Chụp đồ · Cất vào tủ · Mix & match mỗi ngày ✨</p>
+    <!-- APP HEADER -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-eyebrow">
+          <span class="brand-dot"></span>
+          <span>MAI ANH · STYLE STUDIO</span>
+        </div>
+        <h1 class="brand-name">Green <em>Closet</em></h1>
       </div>
-      <div class="btnrow">
-        <span class="pill" id="count">0 món đồ</span>
-        <button type="button" class="ghost" id="backupBtn">⬇ Sao lưu</button>
-        <button type="button" class="ghost" id="restoreBtn">⬆ Khôi phục</button>
-        <input type="file" id="restoreInput" accept="application/json" hidden />
-        <button type="button" class="primary" id="uploadBtn">＋ Thêm quần áo</button>
+
+      <!-- Quick Action Bar -->
+      <div class="header-tools">
+        <div class="counter-badge" id="count">0 món đồ</div>
+        <button type="button" class="tool-btn" id="settingsBtn" title="Google Drive & Cài đặt">
+          <span class="tool-icon">☁️</span>
+          <span class="tool-text" id="headerDriveStatus">Google Drive</span>
+        </button>
+        <button type="button" class="btn-primary" id="uploadBtn">
+          <span>Thêm đồ</span>
+          <span class="btn-bubble">＋</span>
+        </button>
       </div>
     </header>
 
-    <div class="topnote">
-      💡 Ảnh và outfit được lưu trên máy. Khi kết nối Google Sync thành công, dữ liệu cũng được đồng bộ vào tài khoản cloud riêng của m. Hãy bấm <b>Sao lưu</b> định kỳ để không mất tủ đồ khi xóa dữ liệu trình duyệt hoặc đổi máy.
-    </div>
-
-    <!-- Thanh đồng bộ đám mây -->
-    <section class="cloudbar" aria-label="Đồng bộ đám mây">
-      <span style="font-size:23px" aria-hidden="true">☁️</span>
-      <div class="cloudstatus">
-        <strong id="cloudLabel">Tủ đồ đang lưu trên máy</strong>
-        <span id="cloudDetail">Bật Google Sync để dùng trên nhiều thiết bị.</span>
-        <span id="cloudProgress" class="cloud-progress"></span>
+    <!-- FLOATING TAB CONTROLS -->
+    <nav class="studio-nav" aria-label="Điều hướng chính">
+      <div class="studio-nav-track">
+        <button type="button" class="tab-pill active" data-tab="studio">
+          <span class="tab-icon">✦</span>
+          <span>Tủ đồ & Phối đồ</span>
+        </button>
+        <button type="button" class="tab-pill" data-tab="saved">
+          <span class="tab-icon">♡</span>
+          <span>Outfit đã lưu <span id="savedCount"></span></span>
+        </button>
       </div>
-      <button type="button" class="cloudbtn" id="cloudConnect">☁ Kết nối Google</button>
-      <button type="button" class="ghost hidden" id="cloudLogout">Đăng xuất</button>
-    </section>
-
-    <!-- Bảng hướng dẫn cấu hình Google Sync -->
-    <section id="cloudPanel" class="cloud-panel hidden">
-      <div class="sectionhead">
-        <div>
-          <h3>Thiết lập Google Sync một lần 🌿</h3>
-          <p>Thiết lập xong, m mở cùng một đường link trên mọi thiết bị và đăng nhập Google.</p>
-        </div>
-        <button type="button" class="ghost" id="cloudClose">✕</button>
-      </div>
-      <p class="cloud-note">
-        Chưa có ứng dụng online? T cần m tạo một dự án Firebase và đăng ứng dụng lên web. Đây là phần cần tài khoản của m nên t không thể tự hoàn tất thay.
-      </p>
-      <details open>
-        <summary><b>Các bước chuẩn bị (chỉ làm một lần)</b></summary>
-        <ol>
-          <li>Mở <a target="_blank" rel="noopener" href="https://console.firebase.google.com/">Firebase Console</a>, tạo project miễn phí và thêm một Web app (biểu tượng &lt;/&gt;). Sao chép <b>firebaseConfig</b>.</li>
-          <li>Trong Authentication → Sign-in method, bật <b>Google</b>.</li>
-          <li>Trong Firestore Database, tạo database chế độ production và dán nội dung file <code>firestore.rules</code> vào mục Rules, rồi Publish. Không bật quy tắc cho phép mọi người đọc/ghi.</li>
-          <li>Dán <b>firebaseConfig</b> vào ô dưới, nhấn <b>Tạo file web đã kết nối</b>. Đưa file <code>index.html</code> đã tạo lên dịch vụ hosting HTTPS (ví dụ Netlify Drop). Trong Authentication → Settings → Authorized domains, thêm tên miền của trang web đó.</li>
-          <li>Từ nay dùng đường link web đó ở máy tính và điện thoại, bấm <b>Kết nối Google</b> và đăng nhập cùng một tài khoản.</li>
-        </ol>
-      </details>
-      <label for="cloudConfig"><b>Firebase config từ dự án của m</b></label>
-      <textarea id="cloudConfig" placeholder='Dán object firebaseConfig, ví dụ: const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." };'></textarea>
-      <div class="btnrow" style="margin-top:10px">
-        <button type="button" class="primary" id="cloudBuild">Tạo file web đã kết nối</button>
-        <button type="button" class="ghost" id="cloudApply">Kết nối thử trên trang này</button>
-      </div>
-      <p id="cloudSetupInfo" class="cloud-note"></p>
-    </section>
-
-    <!-- Tabs điều hướng -->
-    <nav class="tabs" aria-label="Điều hướng">
-      <button type="button" class="tab active" data-tab="studio">✿ Tủ đồ & Phối đồ</button>
-      <button type="button" class="tab" data-tab="saved">♡ Outfit đã lưu <span id="savedCount"></span></button>
     </nav>
 
-    <!-- Tab 1: Tủ đồ & Studio phối đồ -->
-    <div id="studio" class="layout">
-      <!-- Cột tủ đồ -->
-      <section class="panel">
-        <div class="sectionhead">
-          <div>
-            <h2>Tủ đồ của tớ</h2>
-            <p>Chọn “Phối” để đưa món đồ vào outfit bên cạnh.</p>
+    <!-- MAIN WORKSPACE -->
+    <main id="studio" class="workspace-grid">
+      <!-- CỘT 1: TỦ ĐỒ (CLOSET) -->
+      <section class="bezel-shell closet-section">
+        <div class="bezel-core section-inner">
+          <div class="section-toolbar">
+            <h2 class="section-heading">Tủ đồ</h2>
+            <div class="search-box">
+              <span class="search-ico">🔍</span>
+              <input id="search" class="search-field" placeholder="Tìm kiếm trang phục..." />
+            </div>
           </div>
-          <input id="search" class="search" placeholder="🔎 Tìm tên, màu, ghi chú..." />
+
+          <!-- Lọc danh mục -->
+          <div id="filters" class="filters"></div>
+
+          <!-- Lưới trang phục -->
+          <div id="closet" class="closet"></div>
         </div>
-        <div id="filters" class="filters"></div>
-        <div id="closet" class="closet"></div>
       </section>
 
-      <!-- Cột bảng phối đồ -->
-      <aside class="panel">
-        <div class="sectionhead">
-          <div>
-            <h2>Today's outfit ♡</h2>
-            <p>Bảng phối đồ của m</p>
+      <!-- CỘT 2: BẢNG LOOKBOOK & PHỐI OUTFIT -->
+      <aside class="bezel-shell lookbook-section">
+        <div class="bezel-core section-inner">
+          <div class="section-toolbar">
+            <h2 class="section-heading">Today's Outfit</h2>
+            <button type="button" class="btn-subtle" id="clearBoard">Làm mới</button>
           </div>
-          <button type="button" class="ghost" id="clearBoard">Làm mới</button>
-        </div>
-        <div class="hint">Kéo ảnh từ tủ đồ vào ô tương ứng, hoặc bấm “Phối”.</div>
 
-        <!-- Flat-lay Studio -->
-        <div class="mixstudio">
-          <div class="mixhead">
-            <div>
-              <h3>Mix & Match Studio ✿</h3>
-              <p>Một góc flat lay để m nhìn cả bộ đồ cạnh nhau.</p>
+          <!-- ARTBOARD FLAT-LAY STUDIO -->
+          <div class="artboard-card">
+            <div class="artboard-meta">
+              <span class="artboard-label">Lookbook Canvas</span>
+              <span class="pill-badge" id="mixCount">0 món</span>
             </div>
-            <span class="pill" id="mixCount">0 món</span>
-          </div>
-          <div id="mixCanvas" class="mixcanvas empty" aria-live="polite" aria-label="Bảng ảnh outfit đã phối"></div>
-          <div class="mix-action">
-            <button type="button" class="primary" id="mixButton">✦ Mix đồ ngay</button>
-          </div>
-          <div class="mixhint">Chọn đồ trong tủ → bấm Mix đồ → xem chúng tự xếp thành một set.</div>
-          <div class="mixnote">
-            Dùng ảnh thật của m để so màu, kiểu dáng và tổng thể. Đây là bảng phối ảnh, không xác định được size hay độ vừa khi mặc thật. Tool tự tách nền ảnh khi m thêm đồ (cần internet lần đầu).
-          </div>
-        </div>
 
-        <div class="hint">Các món đã chọn (có thể thay hoặc bỏ từng món):</div>
-        <div class="board" id="board"></div>
-        <div class="lookmeta">
-          <input id="lookName" placeholder="Đặt tên: Đi cà phê cuối tuần..." maxlength="100" />
-        </div>
-        <button type="button" class="primary" id="saveLook" style="width:100%">♡ Lưu outfit này</button>
-        <div class="footer">
-          Mẹo: M có thể phối áo + quần, hoặc váy liền + giày + túi. Ô nào không cần thì cứ để trống nha.
+            <!-- Khung vẽ Mix & Match -->
+            <div id="mixCanvas" class="mixcanvas empty" aria-live="polite" aria-label="Khung ảnh phối đồ"></div>
+
+            <div class="artboard-actions">
+              <button type="button" class="btn-primary btn-block" id="mixButton">
+                <span>Mix đồ ngay</span>
+                <span class="btn-bubble">✦</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- CÁC Ô ĐÃ CHỌN (SLOTS) -->
+          <div class="slots-label">Vị trí món đồ</div>
+          <div class="board" id="board"></div>
+
+          <!-- LƯU OUTFIT -->
+          <div class="save-row">
+            <input id="lookName" class="luxury-input" placeholder="Đặt tên: Đi cà phê, Dạo phố..." maxlength="100" />
+            <button type="button" class="btn-accent" id="saveLook">
+              <span>Lưu</span>
+              <span class="btn-bubble">♡</span>
+            </button>
+          </div>
         </div>
       </aside>
-    </div>
+    </main>
 
-    <!-- Tab 2: Danh sách Outfit đã lưu -->
-    <section id="saved" class="panel hidden">
-      <div class="sectionhead">
-        <div>
-          <h2>Outfit đã lưu</h2>
-          <p>Bộ nào đẹp là cất lại, lần sau mở ra mặc ngay!</p>
+    <!-- TAB 2: BỘ SƯU TẬP OUTFIT ĐÃ LƯU -->
+    <section id="saved" class="bezel-shell hidden">
+      <div class="bezel-core section-inner">
+        <div class="section-toolbar">
+          <h2 class="section-heading">Bộ sưu tập Outfit</h2>
         </div>
+        <div id="savedGrid" class="savedgrid"></div>
       </div>
-      <div id="savedGrid" class="savedgrid"></div>
     </section>
 
-    <div class="footer">
-      My Little Closet · Tách nền AI cần mạng · Mix đồ vẫn dùng offline · Ảnh có thể thêm hàng loạt · Lưu tủ đồ trên thiết bị của m
-    </div>
-    <div class="signoff">created by Mai Anh</div>
+    <!-- FOOTER TINH TẾ -->
+    <footer class="app-footer">
+      <span>MAI ANH’S GREEN CLOSET · HAUTE STUDIO</span>
+    </footer>
   </div>
 
-  <!-- Hộp thoại Thêm / Sửa món đồ -->
+  <!-- MODAL 1: THÊM & SỬA MÓN ĐỒ -->
   <div id="dialogBack" class="dialogback hidden">
-    <div class="dialog" role="dialog" aria-modal="true">
-      <div class="sectionhead">
-        <h2 id="dialogTitle">Thêm quần áo</h2>
-        <button type="button" class="ghost" id="closeDialog">✕</button>
-      </div>
-      <div class="field" id="fileField">
-        <label for="photoInput">Ảnh đồ (có thể chọn nhiều ảnh một lúc)</label>
-        <input id="photoInput" type="file" accept="image/*" multiple />
-        <small class="muted">
-          Ảnh rõ nét, ít vật che sẽ cho kết quả tốt nhất. AI xử lý ngay trên thiết bị; cần kết nối mạng để tải mô hình tách nền.
-        </small>
-        <label class="bg-toggle">
-          <input type="checkbox" id="autoRemove" checked />
-          ✨ Tự tách nền ảnh bằng AI (mặc định bật)
-        </label>
-        <div id="bgStatus" class="bg-status" role="status" aria-live="polite"></div>
-        <button type="button" id="restoreOriginal" class="ghost hidden">↩ Trở lại ảnh gốc của món này</button>
-      </div>
-      <div id="previews" class="previews"></div>
-      <div class="formgrid">
-        <div class="field">
-          <label for="itemName">Tên món đồ</label>
-          <input id="itemName" maxlength="100" placeholder="VD: Áo sơ mi trắng" />
+    <div class="dialog-shell" role="dialog" aria-modal="true">
+      <div class="dialog-core">
+        <div class="dialog-header">
+          <h2 id="dialogTitle" class="dialog-title">Thêm đồ vào tủ</h2>
+          <button type="button" class="btn-close" id="closeDialog">✕</button>
         </div>
-        <div class="field">
-          <label for="itemCat">Loại</label>
-          <select id="itemCat"></select>
+
+        <!-- Khung chọn ảnh -->
+        <div class="field" id="fileField">
+          <label for="photoInput" class="field-title">Ảnh chụp (Có thể chọn nhiều ảnh)</label>
+          <div class="dropzone-box">
+            <input id="photoInput" type="file" accept="image/*" multiple />
+            <div class="dropzone-label">
+              <span class="dropzone-icon">📷</span>
+              <span class="dropzone-main">Chọn hoặc kéo thả ảnh vào đây</span>
+              <span class="dropzone-sub">AI sẽ tự động tách nền để tạo ảnh flat-lay đẹp mắt</span>
+            </div>
+          </div>
+
+          <div class="remove-mode-row">
+            <label class="mode-option active" id="modeFastOpt">
+              <input type="radio" name="bgMode" value="fast" checked />
+              <span>⚡ Tách siêu tốc (Tức thì)</span>
+            </label>
+            <label class="mode-option" id="modeAiOpt">
+              <input type="radio" name="bgMode" value="ai" />
+              <span>✨ AI Tách sâu</span>
+            </label>
+            <label class="mode-option" id="modeNoneOpt">
+              <input type="radio" name="bgMode" value="none" />
+              <span>🖼️ Ảnh gốc</span>
+            </label>
+          </div>
+          <div id="bgStatus" class="bg-status" role="status" aria-live="polite"></div>
+          <button type="button" id="restoreOriginal" class="btn-subtle hidden">↩ Giữ ảnh gốc không tách nền</button>
         </div>
-        <div class="field">
-          <label for="itemColor">Màu sắc</label>
-          <input id="itemColor" maxlength="50" placeholder="Trắng, kem..." />
+
+        <div id="previews" class="previews"></div>
+
+        <!-- Thông tin món đồ -->
+        <div class="formgrid">
+          <div class="field">
+            <label for="itemName" class="field-title">Tên món đồ</label>
+            <input id="itemName" class="luxury-input" maxlength="100" placeholder="VD: Sơ mi lụa trắng" />
+          </div>
+          <div class="field">
+            <label for="itemCat" class="field-title">Phân loại</label>
+            <select id="itemCat" class="luxury-select"></select>
+          </div>
+          <div class="field">
+            <label for="itemColor" class="field-title">Màu sắc</label>
+            <input id="itemColor" class="luxury-input" maxlength="50" placeholder="Trắng kem, Olive..." />
+          </div>
+          <div class="field">
+            <label for="itemSeason" class="field-title">Dịp mặc</label>
+            <select id="itemSeason" class="luxury-select">
+              <option value="">Tất cả các dịp</option>
+              <option>Đi làm</option>
+              <option>Đi chơi dạo phố</option>
+              <option>Dự tiệc</option>
+              <option>Du lịch</option>
+              <option>Mặc ở nhà</option>
+            </select>
+          </div>
         </div>
+
         <div class="field">
-          <label for="itemSeason">Dịp mặc</label>
-          <select id="itemSeason">
-            <option value="">Tất cả</option>
-            <option>Đi làm</option>
-            <option>Đi chơi</option>
-            <option>Đi tiệc</option>
-            <option>Du lịch</option>
-            <option>Ở nhà</option>
-          </select>
+          <label for="itemNote" class="field-title">Ghi chú phối</label>
+          <input id="itemNote" class="luxury-input" maxlength="250" placeholder="Form suông, hợp quần ống rộng..." />
         </div>
-      </div>
-      <div class="field">
-        <label for="itemNote">Ghi chú</label>
-        <input id="itemNote" maxlength="250" placeholder="Form rộng, hợp quần jeans..." />
-      </div>
-      <div class="btnrow" style="justify-content:flex-end;margin-top:18px">
-        <button type="button" class="ghost" id="cancelDialog">Hủy</button>
-        <button type="button" class="primary" id="submitItem">Cất vào tủ ♡</button>
+
+        <div class="dialog-footer">
+          <button type="button" class="btn-subtle" id="cancelDialog">Hủy</button>
+          <button type="button" class="btn-primary" id="submitItem">
+            <span>Cất vào tủ</span>
+            <span class="btn-bubble">♡</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Thông báo Toast -->
+  <!-- MODAL 2: GOOGLE DRIVE SYNC & SAO LƯU (APPS SCRIPT DIRECT UPLOAD) -->
+  <div id="settingsBack" class="dialogback hidden">
+    <div class="dialog-shell" role="dialog" aria-modal="true">
+      <div class="dialog-core">
+        <div class="dialog-header">
+          <h2 class="dialog-title">Lưu trữ & Google Drive</h2>
+          <button type="button" class="btn-close" id="closeSettings">✕</button>
+        </div>
+
+        <!-- GOOGLE DRIVE APPS SCRIPT CARD -->
+        <div class="drive-card">
+          <div class="drive-header-row">
+            <div class="drive-brand">
+              <span class="drive-logo">☁️</span>
+              <div>
+                <strong id="driveStatusTitle">Google Drive Direct Cloud</strong>
+                <span id="driveStatusSub">Lưu ảnh trực tiếp vào Google Drive của bạn</span>
+              </div>
+            </div>
+            <span class="drive-pill connected" id="driveBadge">Đã kích hoạt</span>
+          </div>
+
+          <!-- URL Google Apps Script Web App -->
+          <div class="drive-input-box">
+            <label for="scriptUrlInput" class="field-title">Đường dẫn Google Apps Script Web App</label>
+            <div class="input-with-btn">
+              <input id="scriptUrlInput" class="luxury-input" value="https://script.google.com/macros/s/AKfycbwWZg-Inz8lrRFjwp8GBJJS0k7t9nwbGkYumLdHiPXtIiJm8JzTSqHPrnUX4ujJ0bSa8A/exec" />
+              <button type="button" class="btn-subtle" id="saveScriptUrlBtn">Lưu link</button>
+            </div>
+          </div>
+
+          <!-- Nút hành động Drive -->
+          <div class="drive-actions-row">
+            <button type="button" class="btn-primary" id="testDriveBtn">
+              <span>Kiểm tra kết nối Drive</span>
+              <span class="btn-bubble">↗</span>
+            </button>
+            <button type="button" class="btn-accent" id="driveSyncAllBtn">
+              <span>Tải toàn bộ ảnh lên Drive</span>
+              <span class="btn-bubble">↑</span>
+            </button>
+          </div>
+
+          <div id="driveProgress" class="drive-progress-msg"></div>
+
+          <!-- Lưu ý quan trọng về quyền Anyone -->
+          <details class="drive-guide" open>
+            <summary>Lưu ý quan trọng trên Apps Script để hoạt động</summary>
+            <p style="margin:6px 0;font-size:11px;color:var(--text-muted);line-height:1.6">
+              Trên trang Google Apps Script của bạn, khi bấm <b>Deploy (Triển khai) ➔ Manage deployments (Quản lý bản triển khai)</b>:<br>
+              • <b>Execute as (Thực thi dưới tên):</b> <code>Me (Tôi)</code><br>
+              • <b>Who has access (Ai có quyền truy cập):</b> Chọn <b><code>Anyone (Bất kỳ ai)</code></b> để web có thể gửi ảnh lên Drive mà không bị lỗi chặn quyền.
+            </p>
+          </details>
+        </div>
+
+        <!-- Sao lưu & Khôi phục Offline JSON -->
+        <div class="settings-group">
+          <div class="group-title">Sao lưu dự phòng ra máy tính (File JSON)</div>
+          <div class="group-row">
+            <button type="button" class="btn-subtle" id="backupBtn">⬇ Tải file sao lưu (.json)</button>
+            <button type="button" class="btn-subtle" id="restoreBtn">⬆ Khôi phục từ file</button>
+            <input type="file" id="restoreInput" accept="application/json" hidden />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- THÔNG BÁO TOAST NỔI -->
   <div id="toast" class="toast hidden" role="alert"></div>
 
-  <!-- Cấu hình Cloud Sync & Script ứng dụng -->
-  <script>
-    window.CLOUD_PRESET = null;
-  </script>
+  <!-- SCRIPT ỨNG DỤNG CHÍNH -->
   <script src="index.js" defer></script>
 </body>
 </html>

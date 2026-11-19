@@ -1,6 +1,7 @@
 /**
- * Mai Anh’s Green Closet - Frontend Application Script
- * Tủ đồ ảo & Phối đồ thời trang cá nhân
+ * Mai Anh’s Green Closet - Fashion Studio
+ * Tủ đồ cá nhân & Haute Lookbook Studio
+ * Direct Google Drive Integration via Google Apps Script Web App
  */
 
 'use strict';
@@ -11,7 +12,7 @@
 const CATS = ['Áo', 'Quần', 'Chân váy', 'Váy liền', 'Áo khoác', 'Giày dép', 'Túi xách', 'Phụ kiện'];
 const SLOTS = ['Áo', 'Quần', 'Chân váy', 'Váy liền', 'Áo khoác', 'Giày dép', 'Túi xách', 'Phụ kiện'];
 
-// Vị trí và góc xoay tương đối cho từng loại trang phục trong Mix & Match Flat-lay
+// Tọa độ & độ nghiêng tương đối chuẩn flat-lay lookbook
 const POSITIONS = {
   'Áo': { x: 27, y: 8, w: 45, h: 35, r: -3, z: 4 },
   'Áo khoác': { x: 13, y: 7, w: 53, h: 45, r: -8, z: 5 },
@@ -40,6 +41,11 @@ let processing = false;
 let photoGeneration = 0;
 let restoreRequested = false;
 
+// Google Apps Script Web App URL
+const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwWZg-Inz8lrRFjwp8GBJJS0k7t9nwbGkYumLdHiPXtIiJm8JzTSqHPrnUX4ujJ0bSa8A/exec';
+const APPS_SCRIPT_KEY = 'mai-anh-apps-script-url-v1';
+let appsScriptUrl = localStorage.getItem(APPS_SCRIPT_KEY) || DEFAULT_SCRIPT_URL;
+
 // =============================================================================
 // 3. TIỆN ÍCH DÙNG CHUNG (UTILITIES)
 // =============================================================================
@@ -51,7 +57,7 @@ function toast(msg) {
   t.textContent = msg;
   t.classList.remove('hidden');
   clearTimeout(window._toastTimer);
-  window._toastTimer = setTimeout(() => t.classList.add('hidden'), 2900);
+  window._toastTimer = setTimeout(() => t.classList.add('hidden'), 3200);
 }
 
 function esc(s) {
@@ -73,23 +79,23 @@ async function fileToDataURL(f) {
   });
 }
 
-// Nén ảnh để tối ưu bộ nhớ trên trình duyệt và di động
+// Nén ảnh thông minh bảo toàn độ nét trang phục
 async function shrink(f) {
   const data = await fileToDataURL(f);
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
-      const scale = Math.min(1, 1100 / Math.max(image.width, image.height));
+      const scale = Math.min(1, 1200 / Math.max(image.width, image.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(image.width * scale));
       canvas.height = Math.max(1, Math.round(image.height * scale));
       const ctx = canvas.getContext('2d');
       if (f.type !== 'image/png') {
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = '#FAF8F5';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL(f.type === 'image/png' ? 'image/png' : 'image/jpeg', f.type === 'image/png' ? undefined : 0.82));
+      resolve(canvas.toDataURL(f.type === 'image/png' ? 'image/png' : 'image/jpeg', f.type === 'image/png' ? undefined : 0.85));
     };
     image.onerror = () => reject(new Error('Ảnh không đọc được'));
     image.src = data;
@@ -97,7 +103,50 @@ async function shrink(f) {
 }
 
 // =============================================================================
-// 4. CƠ SỞ DỮ LIỆU INDEXEDDB (OFFLINE-FIRST)
+// 4. GOOGLE DRIVE DIRECT UPLOAD QUA GOOGLE APPS SCRIPT WEB APP
+// =============================================================================
+async function uploadToAppsScript(base64Data, fileName) {
+  if (!appsScriptUrl) throw new Error('Chưa thiết lập đường dẫn Google Apps Script');
+
+  const payload = {
+    action: 'upload',
+    name: fileName || `item-${Date.now()}.png`,
+    base64: base64Data,
+    mimeType: 'image/png'
+  };
+
+  // Sử dụng 'text/plain' để tránh trình duyệt gửi CORS OPTIONS preflight request tới Google Apps Script
+  const response = await fetch(appsScriptUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const text = await response.text();
+  let result;
+  try {
+    result = JSON.parse(text);
+  } catch (err) {
+    if (text.includes('Sign in') || text.includes('AccountsSignInUi') || text.includes('Unauthorized')) {
+      throw new Error('Apps Script đang chặn quyền truy cập. Hãy vào Apps Script ➔ Deploy ➔ Manage deployments ➔ Đổi "Who has access" thành "Anyone" nhé!');
+    }
+    throw new Error('Phản hồi từ Apps Script không hợp lệ: ' + text.slice(0, 120));
+  }
+
+  if (result.status === 'error') {
+    throw new Error(result.message || 'Lỗi khi lưu ảnh vào Google Drive');
+  }
+
+  // Trả về URL xem ảnh công khai qua Google CDN
+  const fileId = result.id || result.fileId;
+  const viewUrl = result.url || (fileId ? `https://lh3.googleusercontent.com/d/${fileId}` : null);
+  return { id: fileId, url: viewUrl || base64Data };
+}
+
+// =============================================================================
+// 5. CƠ SỞ DỮ LIỆU INDEXEDDB (OFFLINE-FIRST)
 // =============================================================================
 function tx(store, mode = 'readonly') {
   return db.transaction(store, mode).objectStore(store);
@@ -127,21 +176,14 @@ function openDB() {
   });
 }
 
-let basePersist = async function (store, obj) {
+async function persist(store, obj) {
+  obj.updated = Date.now();
   await req(tx(store, 'readwrite').put(obj));
-};
+}
 
-let baseRemove = async function (store, id) {
+async function remove(store, id) {
   await req(tx(store, 'readwrite').delete(id));
-};
-
-let persist = async function (store, obj) {
-  await basePersist(store, obj);
-};
-
-let remove = async function (store, id) {
-  await baseRemove(store, id);
-};
+}
 
 async function reload() {
   items = await req(tx('items').getAll());
@@ -152,7 +194,7 @@ async function reload() {
 }
 
 // =============================================================================
-// 5. RENDER GIAO DIỆN CHÍNH
+// 6. RENDER GIAO DIỆN HAUTE ATELIER
 // =============================================================================
 function render() {
   $('count').textContent = items.length + ' món đồ';
@@ -166,7 +208,7 @@ function render() {
 function renderFilters() {
   const container = $('filters');
   container.innerHTML = ['Tất cả', ...CATS].map(c => `
-    <button class="chip ${activeFilter === c ? 'active' : ''}" data-cat="${esc(c)}">
+    <button type="button" class="chip ${activeFilter === c ? 'active' : ''}" data-cat="${esc(c)}">
       ${esc(c)}${c === 'Tất cả' ? ' (' + items.length + ')' : ''}
     </button>
   `).join('');
@@ -190,7 +232,7 @@ function renderCloset() {
 
   const closetEl = $('closet');
   if (!shown.length) {
-    closetEl.innerHTML = `<div class="empty">Chưa có món nào ở đây 🧺<br>Nhấn “Thêm quần áo” để bắt đầu nhé!</div>`;
+    closetEl.innerHTML = `<div class="empty">Tủ đồ chưa có món nào ở mục này 🧺<br>Nhấn “Thêm đồ” để bắt đầu nhé!</div>`;
     return;
   }
 
@@ -209,12 +251,10 @@ function renderCloset() {
     </div>
   `).join('');
 
-  // Drag & drop cho máy tính
   closetEl.querySelectorAll('[draggable]').forEach(el => {
     el.ondragstart = e => e.dataTransfer.setData('text/plain', el.dataset.id);
   });
 
-  // Nút hành động trực quan (tối ưu cảm ứng di động)
   closetEl.querySelectorAll('[data-add]').forEach(el => {
     el.onclick = () => addToBoard(el.dataset.add);
   });
@@ -233,7 +273,7 @@ function addToBoard(id, slot) {
   if (!it) return;
   board[slot || it.cat] = id;
   renderBoard();
-  toast('Đã thêm vào outfit ✨');
+  toast('Đã thêm “' + it.name + '” vào outfit ✨');
 }
 
 function renderBoard() {
@@ -249,7 +289,7 @@ function renderBoard() {
           <img alt="${esc(it.name)}" src="${it.photo}">
           <div class="slotcaption">${esc(it.name)}</div>
         ` : `
-          <div style="font-size:28px;opacity:.27;margin-bottom:4px">＋</div>
+          <div style="font-size:24px;opacity:.3;margin-bottom:4px">＋</div>
           <div class="sub">Thả ảnh vào đây</div>
         `}
       </div>
@@ -282,7 +322,7 @@ function renderBoard() {
 function renderLooks() {
   const grid = $('savedGrid');
   if (!looks.length) {
-    grid.innerHTML = '<div class="empty">Chưa lưu outfit nào ♡<br>Qua tab Tủ đồ để mix bộ đầu tiên nha.</div>';
+    grid.innerHTML = '<div class="empty">Chưa có outfit nào trong Bộ sưu tập ♡<br>Qua tab Tủ đồ để phối set đầu tiên nhé.</div>';
     return;
   }
 
@@ -300,9 +340,9 @@ function renderLooks() {
         </div>
         <div class="lookname">${esc(l.name)}</div>
         <div class="muted">${selected.length} món · ${new Date(l.added).toLocaleDateString('vi-VN')}</div>
-        <div class="btnrow" style="margin-top:10px">
-          <button type="button" class="small add" data-load="${esc(l.id)}">Mở để phối lại</button>
-          <button type="button" class="small" data-del-look="${esc(l.id)}">Xóa</button>
+        <div class="group-row" style="margin-top:10px">
+          <button type="button" class="btn-subtle" data-load="${esc(l.id)}">Mở để phối lại</button>
+          <button type="button" class="btn-subtle" data-del-look="${esc(l.id)}">Xóa</button>
         </div>
       </article>
     `;
@@ -322,7 +362,7 @@ function renderLooks() {
 
   grid.querySelectorAll('[data-del-look]').forEach(b => {
     b.onclick = async () => {
-      if (!confirm('Xóa outfit này nhé?')) return;
+      if (!confirm('Xóa outfit này khỏi Bộ sưu tập?')) return;
       await remove('looks', b.dataset.delLook);
       await reload();
     };
@@ -330,7 +370,7 @@ function renderLooks() {
 }
 
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(x => {
+  document.querySelectorAll('.tab-pill, .tab').forEach(x => {
     x.classList.toggle('active', x.dataset.tab === tab);
   });
   $('studio').classList.toggle('hidden', tab !== 'studio');
@@ -340,7 +380,7 @@ function switchTab(tab) {
 async function deleteItem(id) {
   const i = items.find(x => x.id === id);
   if (!i) return;
-  if (!confirm(`Xóa “${i.name}” khỏi tủ đồ? Món này cũng sẽ không hiện trong outfit đã lưu.`)) return;
+  if (!confirm(`Xóa “${i.name}” khỏi tủ đồ? Món này cũng sẽ không hiện trong các outfit đã lưu.`)) return;
   await remove('items', id);
   for (let k in board) {
     if (board[k] === id) delete board[k];
@@ -349,7 +389,7 @@ async function deleteItem(id) {
 }
 
 // =============================================================================
-// 6. FLAT-LAY STUDIO (MIX & MATCH KHÔNG DÙNG MANNEQUIN)
+// 7. LOOKBOOK STUDIO (MIX & MATCH FLAT-LAY)
 // =============================================================================
 function selectedPieces() {
   return SLOTS.map(cat => ({ cat, it: items.find(x => x.id === board[cat]) })).filter(x => x.it);
@@ -368,7 +408,7 @@ function mixOutfit() {
   if (!selected.length) {
     canvas.innerHTML = '';
     canvas.classList.add('empty');
-    toast('M chọn ít nhất một món trước nha ♡');
+    toast('Hãy chọn ít nhất một món trước nha ♡');
     return;
   }
 
@@ -396,20 +436,163 @@ function mixOutfit() {
     </figure>
   `).join('');
 
-  toast('Đã mix ' + selected.length + ' món! 🌿');
+  toast('Đã dàn set ' + selected.length + ' món lên Lookbook! 🌿');
 }
 
 // =============================================================================
-// 7. TÁCH NỀN AI (BACKGROUND REMOVAL ON-DEVICE)
+// 8. TÁCH NỀN SIÊU TỐC & AI (BACKGROUND REMOVAL ENGINE)
 // =============================================================================
-let removeBackgroundFn = null;
 
+// Thuật toán tách nền tức thì bằng Canvas Flood-Fill (< 30ms)
+async function fastRemoveBackground(dataUrl, tolerance = 38) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const w = img.width;
+      const h = img.height;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+
+      // Lấy mẫu màu nền đại diện từ các góc và viền
+      const samples = [
+        [0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1],
+        [Math.floor(w / 4), 0], [Math.floor((3 * w) / 4), 0],
+        [Math.floor(w / 4), h - 1], [Math.floor((3 * w) / 4), h - 1],
+        [0, Math.floor(h / 4)], [0, Math.floor((3 * h) / 4)],
+        [w - 1, Math.floor(h / 4)], [w - 1, Math.floor((3 * h) / 4)]
+      ];
+
+      let rSum = 0, gSum = 0, bSum = 0;
+      for (const [sx, sy] of samples) {
+        const idx = (sy * w + sx) * 4;
+        rSum += data[idx];
+        gSum += data[idx + 1];
+        bSum += data[idx + 2];
+      }
+      const bgR = rSum / samples.length;
+      const bgG = gSum / samples.length;
+      const bgB = bSum / samples.length;
+
+      // Khoảng cách màu Euclide
+      function colorDiff(idx) {
+        const dr = data[idx] - bgR;
+        const dg = data[idx + 1] - bgG;
+        const db = data[idx + 2] - bgB;
+        return Math.sqrt(dr * dr + dg * dg + db * db);
+      }
+
+      const totalPixels = w * h;
+      const visited = new Uint8Array(totalPixels);
+      const queue = new Int32Array(totalPixels);
+      let head = 0;
+      let tail = 0;
+
+      // Đưa các pixel biên có màu tương đồng vào hàng đợi BFS
+      for (let x = 0; x < w; x++) {
+        const topIdx = x;
+        if (colorDiff(topIdx * 4) <= tolerance) {
+          visited[topIdx] = 1;
+          queue[tail++] = topIdx;
+        }
+        const btmIdx = (h - 1) * w + x;
+        if (colorDiff(btmIdx * 4) <= tolerance) {
+          visited[btmIdx] = 1;
+          queue[tail++] = btmIdx;
+        }
+      }
+
+      for (let y = 0; y < h; y++) {
+        const leftIdx = y * w;
+        if (!visited[leftIdx] && colorDiff(leftIdx * 4) <= tolerance) {
+          visited[leftIdx] = 1;
+          queue[tail++] = leftIdx;
+        }
+        const rightIdx = y * w + (w - 1);
+        if (!visited[rightIdx] && colorDiff(rightIdx * 4) <= tolerance) {
+          visited[rightIdx] = 1;
+          queue[tail++] = rightIdx;
+        }
+      }
+
+      // Lan truyền Flood-fill chỉ trên vùng nền bên ngoài (bảo vệ áo ở giữa)
+      while (head < tail) {
+        const p = queue[head++];
+        const px = p % w;
+        const py = (p / w) | 0;
+
+        if (px > 0) {
+          const np = p - 1;
+          if (!visited[np] && colorDiff(np * 4) <= tolerance) {
+            visited[np] = 1;
+            queue[tail++] = np;
+          }
+        }
+        if (px < w - 1) {
+          const np = p + 1;
+          if (!visited[np] && colorDiff(np * 4) <= tolerance) {
+            visited[np] = 1;
+            queue[tail++] = np;
+          }
+        }
+        if (py > 0) {
+          const np = p - w;
+          if (!visited[np] && colorDiff(np * 4) <= tolerance) {
+            visited[np] = 1;
+            queue[tail++] = np;
+          }
+        }
+        if (py < h - 1) {
+          const np = p + w;
+          if (!visited[np] && colorDiff(np * 4) <= tolerance) {
+            visited[np] = 1;
+            queue[tail++] = np;
+          }
+        }
+      }
+
+      // Xóa trong suốt nền
+      for (let i = 0; i < totalPixels; i++) {
+        if (visited[i]) {
+          data[i * 4 + 3] = 0;
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Lỗi xử lý ảnh'));
+    img.src = dataUrl;
+  });
+}
+
+let removeBackgroundFn = null;
 async function getRemover() {
   if (removeBackgroundFn) return removeBackgroundFn;
+  try {
+    // Ưu tiên load từ node_modules cục bộ đã cài qua npm
+    const mod = await import('./node_modules/@imgly/background-removal/dist/index.mjs');
+    if (typeof mod.removeBackground === 'function') {
+      removeBackgroundFn = mod.removeBackground;
+      return removeBackgroundFn;
+    }
+  } catch (localErr) {
+    // Fallback qua CDN khi mở file tĩnh hoặc môi trường chưa hỗ trợ
+  }
   const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm');
   if (typeof mod.removeBackground !== 'function') throw new Error('Không khởi tạo được AI tách nền');
   removeBackgroundFn = mod.removeBackground;
   return removeBackgroundFn;
+}
+
+function getBgMode() {
+  const checked = document.querySelector('input[name="bgMode"]:checked');
+  return checked ? checked.value : 'fast';
 }
 
 function updatePreviews() {
@@ -421,30 +604,102 @@ function updatePreviews() {
   `).join('');
 }
 
+let rawUploadedFiles = [];
+
+async function processPhotos(files, mode = getBgMode()) {
+  const generation = ++photoGeneration;
+  photos = [];
+  processing = true;
+  $('submitItem').disabled = true;
+  $('previews').textContent = 'Đang xử lý ảnh...';
+
+  try {
+    for (let j = 0; j < files.length; j++) {
+      if (generation !== photoGeneration) return;
+      const f = files[j];
+      const isFile = f instanceof File || f instanceof Blob;
+      if (!isFile && typeof f !== 'string') continue;
+
+      $('bgStatus').textContent = `Đang xử lý ${j + 1}/${files.length}...`;
+      const original = typeof f === 'string' ? f : await shrink(f);
+      let photo = original;
+      let removed = false;
+
+      if (mode === 'fast') {
+        const t0 = performance.now();
+        photo = await fastRemoveBackground(original, 38);
+        removed = true;
+        const dt = Math.round(performance.now() - t0);
+        $('bgStatus').textContent = `⚡ Đã tách nền siêu tốc trong ${dt}ms!`;
+      } else if (mode === 'ai') {
+        try {
+          $('bgStatus').textContent = `✨ AI đang tách nền ảnh ${j + 1}/${files.length}...`;
+          const removeBg = await getRemover();
+          const inputBlob = await (await fetch(original)).blob();
+          const outputBlob = await removeBg(inputBlob, {
+            model: 'isnet_quint8',
+            output: { format: 'image/png', type: 'foreground' }
+          });
+          photo = await shrink(new File([outputBlob], 'tach-nen.png', { type: 'image/png' }));
+          removed = true;
+        } catch (err) {
+          console.warn('AI tách nền lỗi, fallback về tách nhanh:', err);
+          photo = await fastRemoveBackground(original, 38);
+          removed = true;
+        }
+      }
+
+      if (generation !== photoGeneration) return;
+      photos.push({ photo, original, removed });
+      updatePreviews();
+    }
+
+    if (generation === photoGeneration) {
+      if (mode === 'none') {
+        $('bgStatus').textContent = '🖼️ Đang giữ ảnh gốc nguyên bản.';
+      } else {
+        $('bgStatus').textContent = `✅ Đã xử lý ${photos.length} ảnh tức thì! Sẵn sàng cất vào tủ.`;
+      }
+    }
+  } catch (err) {
+    $('bgStatus').textContent = 'Không đọc được ảnh: ' + err.message;
+  } finally {
+    if (generation === photoGeneration) {
+      processing = false;
+      $('submitItem').disabled = false;
+    }
+  }
+}
+
 // =============================================================================
-// 8. HỘP THOẠI THÊM & SỬA MÓN ĐỒ (MODAL)
+// 9. HỘP THOẠI THÊM & SỬA TRANG PHỤC (MODAL)
 // =============================================================================
 function openModal(id = null) {
   editId = id;
   photoGeneration++;
   photos = [];
+  rawUploadedFiles = [];
   processing = false;
   restoreRequested = false;
   $('photoInput').value = '';
   $('previews').innerHTML = '';
   $('bgStatus').textContent = '';
   $('submitItem').disabled = false;
-  $('autoRemove').checked = true;
+
+  // Đặt lại radio mode về fast
+  const fastRadio = document.querySelector('input[name="bgMode"][value="fast"]');
+  if (fastRadio) fastRadio.checked = true;
+  document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('active'));
+  $('modeFastOpt')?.classList.add('active');
 
   const i = items.find(x => x.id === id);
   $('restoreOriginal').classList.toggle('hidden', !i?.original);
-  $('dialogTitle').textContent = id ? 'Sửa món đồ' : 'Thêm quần áo';
+  $('dialogTitle').textContent = id ? 'Chỉnh sửa trang phục' : 'Thêm đồ vào tủ';
   $('itemName').value = i?.name || '';
   $('itemCat').value = i?.cat || 'Áo';
   $('itemColor').value = i?.color || '';
   $('itemSeason').value = i?.season || '';
   $('itemNote').value = i?.note || '';
-  $('fileField').querySelector('label').textContent = id ? 'Thay ảnh (nếu muốn)' : 'Ảnh đồ (có thể chọn nhiều ảnh một lúc)';
   $('dialogBack').classList.remove('hidden');
 }
 
@@ -455,74 +710,33 @@ function closeModal() {
 }
 
 $('photoInput').onchange = async e => {
-  const generation = ++photoGeneration;
-  const fs = [...e.target.files].slice(0, 40);
-  photos = [];
-  processing = true;
-  $('submitItem').disabled = true;
-  $('previews').textContent = 'Đang chuẩn bị ảnh...';
-
-  try {
-    for (let j = 0; j < fs.length; j++) {
-      if (generation !== photoGeneration) return;
-      const f = fs[j];
-      if (!f.type.startsWith('image/')) continue;
-
-      $('bgStatus').textContent = `Đang đọc ảnh ${j + 1}/${fs.length}...`;
-      const original = await shrink(f);
-      let photo = original;
-      let removed = false;
-
-      if ($('autoRemove').checked) {
-        try {
-          $('bgStatus').textContent = `✨ AI đang tách nền ảnh ${j + 1}/${fs.length}. Lần đầu có thể cần tải mô hình...`;
-          const removeBg = await getRemover();
-          const inputBlob = await (await fetch(original)).blob();
-          const outputBlob = await removeBg(inputBlob, {
-            model: 'isnet_quint8',
-            output: { format: 'image/png', type: 'foreground' }
-          });
-          photo = await shrink(new File([outputBlob], 'tach-nen.png', { type: 'image/png' }));
-          removed = true;
-        } catch (err) {
-          console.warn('Tách nền thất bại', err);
-          $('bgStatus').textContent = '⚠️ AI chưa chạy được (kiểm tra internet). Đã giữ lại ảnh gốc.';
-        }
-      }
-
-      if (generation !== photoGeneration) return;
-      photos.push({ photo, original, removed });
-      updatePreviews();
-    }
-
-    if (generation === photoGeneration) {
-      $('bgStatus').textContent = photos.some(p => p.removed)
-        ? `✅ Hoàn tất: ${photos.filter(p => p.removed).length}/${photos.length} ảnh đã tách nền. Có thể lưu vào tủ.`
-        : $('autoRemove').checked
-          ? '⚠️ Chưa tách được nền. M vẫn có thể lưu ảnh gốc hoặc thử lại khi có internet.'
-          : 'Đã chuẩn bị ảnh gốc, không tách nền.';
-    }
-  } catch (err) {
-    $('bgStatus').textContent = 'Không đọc được ảnh: ' + err.message;
-  } finally {
-    if (generation === photoGeneration) {
-      processing = false;
-      $('submitItem').disabled = false;
-    }
+  rawUploadedFiles = [...e.target.files].slice(0, 40);
+  if (rawUploadedFiles.length) {
+    await processPhotos(rawUploadedFiles, getBgMode());
   }
 };
 
-$('autoRemove').onchange = () => {
-  if (photos.length && !processing) {
-    $('bgStatus').textContent = 'Đổi chế độ rồi chọn lại ảnh để áp dụng nha.';
-  }
-};
+// Đổi chế độ tách nền tức thì trên các ảnh đã chọn
+document.querySelectorAll('input[name="bgMode"]').forEach(radio => {
+  radio.onchange = () => {
+    document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('active'));
+    radio.closest('.mode-option')?.classList.add('active');
+
+    if (rawUploadedFiles.length && !processing) {
+      processPhotos(rawUploadedFiles, radio.value);
+    } else if (photos.length && !processing) {
+      const originals = photos.map(p => p.original);
+      processPhotos(originals, radio.value);
+    }
+  };
+});
 
 $('restoreOriginal').onclick = () => {
   restoreRequested = true;
-  $('bgStatus').textContent = 'Sẽ dùng ảnh gốc sau khi bấm Lưu.';
+  $('bgStatus').textContent = 'Sẽ sử dụng ảnh gốc sau khi bấm Lưu.';
 };
 
+// Cất vào tủ: Tự động tải ảnh lên Google Drive qua Apps Script Web App
 $('submitItem').onclick = async () => {
   if (busy || processing) return;
 
@@ -532,7 +746,7 @@ $('submitItem').onclick = async () => {
   const season = $('itemSeason').value;
   const note = $('itemNote').value.trim();
 
-  if (!editId && !photos.length) return toast('M chọn ảnh món đồ trước nha!');
+  if (!editId && !photos.length) return toast('Hãy chọn ảnh trang phục trước nhé!');
 
   busy = true;
   $('submitItem').disabled = true;
@@ -540,12 +754,32 @@ $('submitItem').onclick = async () => {
   try {
     if (editId) {
       const old = items.find(x => x.id === editId);
-      const newPhoto = photos[0];
-      const imgFields = newPhoto
-        ? { photo: newPhoto.photo, original: newPhoto.original, removed: newPhoto.removed }
-        : restoreRequested && old.original
-          ? { photo: old.original, original: old.original, removed: false }
-          : {};
+      let imgFields = {};
+
+      if (photos.length) {
+        let finalPhoto = photos[0].photo;
+        let driveFileId = old.driveFileId || null;
+
+        if (appsScriptUrl && finalPhoto.startsWith('data:image/')) {
+          toast('Đang tải ảnh cập nhật lên Google Drive ☁...');
+          try {
+            const driveRes = await uploadToAppsScript(finalPhoto, `${name || old.name || 'item'}-${Date.now()}.png`);
+            finalPhoto = driveRes.url;
+            driveFileId = driveRes.id;
+          } catch (uploadErr) {
+            console.warn('Lỗi tải Drive, giữ ảnh cục bộ:', uploadErr.message);
+          }
+        }
+
+        imgFields = {
+          photo: finalPhoto,
+          original: photos[0].original,
+          removed: photos[0].removed,
+          driveFileId
+        };
+      } else if (restoreRequested && old.original) {
+        imgFields = { photo: old.original, original: old.original, removed: false };
+      }
 
       await persist('items', {
         ...old,
@@ -559,6 +793,20 @@ $('submitItem').onclick = async () => {
     } else {
       for (let j = 0; j < photos.length; j++) {
         const p = photos[j];
+        let finalPhoto = p.photo;
+        let driveFileId = null;
+
+        if (appsScriptUrl && p.photo.startsWith('data:image/')) {
+          toast(`Đang lưu ảnh ${j + 1}/${photos.length} vào Google Drive ☁...`);
+          try {
+            const driveRes = await uploadToAppsScript(p.photo, `${name || cat}-${Date.now()}-${j}.png`);
+            finalPhoto = driveRes.url;
+            driveFileId = driveRes.id;
+          } catch (uploadErr) {
+            console.warn('Lỗi tải Drive, lưu cục bộ:', uploadErr.message);
+          }
+        }
+
         await persist('items', {
           id: uuid(),
           name: name ? (photos.length > 1 ? `${name} ${j + 1}` : name) : `${cat} ${items.length + j + 1}`,
@@ -566,7 +814,10 @@ $('submitItem').onclick = async () => {
           color,
           season,
           note,
-          ...p,
+          photo: finalPhoto,
+          original: p.original,
+          removed: p.removed,
+          driveFileId,
           added: Date.now() + j
         });
       }
@@ -574,9 +825,9 @@ $('submitItem').onclick = async () => {
 
     closeModal();
     await reload();
-    toast('Đã cất đồ vào tủ! ♡');
+    toast('Đã cất trang phục vào tủ! ♡');
   } catch (e) {
-    alert('Không lưu được ảnh. Có thể bộ nhớ trình duyệt đã đầy. Hãy sao lưu và thử ảnh nhỏ hơn.\n' + e.message);
+    alert('Không lưu được đồ: ' + e.message);
   } finally {
     busy = false;
     $('submitItem').disabled = false;
@@ -598,7 +849,7 @@ $('saveLook').onclick = async () => {
   try {
     await persist('looks', look);
     await reload();
-    toast('Đã lưu outfit xinh xẻo! ♡');
+    toast('Đã lưu outfit vào Bộ sưu tập! ♡');
   } catch (e) {
     alert('Lưu outfit thất bại: ' + e.message);
   }
@@ -618,23 +869,108 @@ $('dialogBack').onclick = e => {
   if (e.target === $('dialogBack')) closeModal();
 };
 
+// =============================================================================
+// 10. GOOGLE APPS SCRIPT ACTIONS & MODAL SETTINGS
+// =============================================================================
+$('settingsBtn').onclick = () => {
+  $('scriptUrlInput').value = appsScriptUrl;
+  $('settingsBack').classList.remove('hidden');
+};
+
+$('closeSettings').onclick = () => $('settingsBack').classList.add('hidden');
+$('settingsBack').onclick = e => {
+  if (e.target === $('settingsBack')) $('settingsBack').classList.add('hidden');
+};
+
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') {
+    closeModal();
+    $('settingsBack').classList.add('hidden');
+  }
 });
 
-document.querySelectorAll('.tab').forEach(b => {
+document.querySelectorAll('.tab-pill, .tab').forEach(b => {
   b.onclick = () => switchTab(b.dataset.tab);
 });
 
 $('mixButton').onclick = mixOutfit;
 
+// Lưu URL Google Apps Script
+$('saveScriptUrlBtn').onclick = () => {
+  const val = $('scriptUrlInput').value.trim();
+  if (!val) return toast('Hãy dán link Web App vào ô trước nha');
+  appsScriptUrl = val;
+  localStorage.setItem(APPS_SCRIPT_KEY, appsScriptUrl);
+  toast('Đã lưu đường dẫn Google Apps Script!');
+  $('driveProgress').textContent = '✅ Đã lưu link Web App.';
+};
+
+// Kiểm tra kết nối với Google Apps Script
+$('testDriveBtn').onclick = async () => {
+  const val = $('scriptUrlInput').value.trim();
+  if (val) {
+    appsScriptUrl = val;
+    localStorage.setItem(APPS_SCRIPT_KEY, appsScriptUrl);
+  }
+
+  $('driveProgress').textContent = '⏳ Đang kiểm tra kết nối tới Google Drive của bạn...';
+  $('testDriveBtn').disabled = true;
+
+  try {
+    // Gửi test 1 ảnh pixel 1x1 trong suốt
+    const testPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    const res = await uploadToAppsScript(testPixel, 'mai-anh-closet-test.png');
+    $('driveProgress').textContent = '✅ Kết nối Google Drive thành công! Thư mục “Mai Anh Closet” đã sẵn sàng lưu ảnh.';
+    toast('Kết nối Google Drive thành công ☁');
+  } catch (err) {
+    $('driveProgress').textContent = '⚠️ ' + err.message;
+  } finally {
+    $('testDriveBtn').disabled = false;
+  }
+};
+
+// Đồng bộ toàn bộ ảnh hiện có lên Drive
+$('driveSyncAllBtn').onclick = async () => {
+  const base64Items = items.filter(i => i.photo && i.photo.startsWith('data:image/'));
+  if (!base64Items.length) {
+    $('driveProgress').textContent = '✨ Tất cả ảnh đã được lưu trên Drive hoặc không có ảnh Base64.';
+    toast('Tất cả ảnh đã ở trên Google Drive rồi!');
+    return;
+  }
+
+  if (!confirm(`Tìm thấy ${base64Items.length} ảnh đang lưu trên máy. Bắt đầu tải toàn bộ lên Google Drive của bạn?`)) return;
+
+  $('driveSyncAllBtn').disabled = true;
+  let successCount = 0;
+
+  for (let idx = 0; idx < base64Items.length; idx++) {
+    const item = base64Items[idx];
+    $('driveProgress').textContent = `⏳ Đang tải ảnh ${idx + 1}/${base64Items.length}: “${item.name}” lên Drive...`;
+
+    try {
+      const driveRes = await uploadToAppsScript(item.photo, `${item.name}-${item.id}.png`);
+      item.photo = driveRes.url;
+      item.driveFileId = driveRes.id;
+      await persist('items', item);
+      successCount++;
+    } catch (err) {
+      console.error(`Lỗi tải item ${item.name}:`, err);
+    }
+  }
+
+  await reload();
+  $('driveSyncAllBtn').disabled = false;
+  $('driveProgress').textContent = `🎉 Hoàn tất! Đã tải ${successCount}/${base64Items.length} ảnh lên Google Drive và giải phóng bộ nhớ.`;
+  toast(`Đã đồng bộ ${successCount} ảnh lên Drive thành công ☁`);
+};
+
 // =============================================================================
-// 9. SAO LƯU & KHÔI PHỤC FILE DỰ PHÒNG JSON
+// 11. SAO LƯU & KHÔI PHỤC FILE DỰ PHÒNG JSON
 // =============================================================================
 $('backupBtn').onclick = async () => {
   const payload = {
     app: 'my-little-closet',
-    version: 4,
+    version: 5,
     exportedAt: new Date().toISOString(),
     items,
     looks
@@ -643,10 +979,10 @@ $('backupBtn').onclick = async () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'tu-do-ao-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.download = 'mai-anh-closet-backup-' + new Date().toISOString().slice(0, 10) + '.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast('Đã tải bản sao lưu 💾');
+  toast('Đã tải bản sao lưu tủ đồ 💾');
 };
 
 $('restoreBtn').onclick = () => $('restoreInput').click();
@@ -678,347 +1014,14 @@ $('restoreInput').onchange = async e => {
 };
 
 // =============================================================================
-// 10. ĐỒNG BỘ ĐÁM MÂY GOOGLE SYNC (FIREBASE FIRESTORE)
+// 12. KHỞI CHẠY ỨNG DỤNG
 // =============================================================================
-const CLOUD_PRESET = window.CLOUD_PRESET || null;
-let firebaseSDK = null;
-let cloudApp = null;
-let cloudAuth = null;
-let cloudDB = null;
-let cloudUser = null;
-let cloudBusy = false;
-let cloudConfigured = false;
-let cloudRetryTimer = null;
-
-const CLOUD_PENDING_KEY = 'mai-anh-closet-sync-queue-v1';
-const CLOUD_CFG_KEY = 'mai-anh-closet-firebase-v1';
-
-function cloudSyncedKey(store) {
-  return 'mai-anh-cloud-seen-' + (cloudUser?.uid || 'guest') + '-' + store;
-}
-
-function cloudSeen(store) {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(cloudSyncedKey(store)) || '[]'));
-  } catch {
-    return new Set();
-  }
-}
-
-function cloudSaveSeen(store, set) {
-  localStorage.setItem(cloudSyncedKey(store), JSON.stringify([...set]));
-}
-
-let CLOUD_CFG = CLOUD_PRESET || (() => {
-  try {
-    return JSON.parse(localStorage.getItem(CLOUD_CFG_KEY) || 'null');
-  } catch {
-    return null;
-  }
-})();
-
-function cloudLog(message, detail = '') {
-  $('cloudLabel').textContent = message;
-  $('cloudDetail').textContent = detail;
-}
-
-function cloudProgress(s = '') {
-  $('cloudProgress').textContent = s;
-}
-
-function cloudPending() {
-  try {
-    return JSON.parse(localStorage.getItem(CLOUD_PENDING_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function cloudQueue(store, id, action) {
-  if (!cloudConfigured) return;
-  const q = cloudPending().filter(x => !(x.store === store && x.id === id));
-  q.push({ store, id, action, when: Date.now() });
-  localStorage.setItem(CLOUD_PENDING_KEY, JSON.stringify(q));
-  cloudProgress(`⏳ ${q.length} thay đổi chưa đồng bộ`);
-  if (cloudUser) cloudSchedule();
-}
-
-function cloudSchedule() {
-  clearTimeout(cloudRetryTimer);
-  cloudRetryTimer = setTimeout(() => {
-    cloudSync().catch(e => cloudProgress('⚠ Đồng bộ lỗi: ' + e.message));
-  }, 850);
-}
-
-function cloudParseConfig(s) {
-  const body = s.trim().replace(/^\s*(?:const|let|var)\s+firebaseConfig\s*=\s*/, '').replace(/;\s*$/, '');
-  let cfg;
-  try {
-    cfg = JSON.parse(body);
-  } catch {
-    const x = body.match(/\{[\s\S]*\}/);
-    if (!x) throw Error('Không tìm thấy phần { ... } của firebaseConfig');
-    let obj = x[0];
-    obj = obj.replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')
-             .replace(/'/g, '"')
-             .replace(/,\s*([}\]])/g, '$1');
-    cfg = JSON.parse(obj);
-  }
-  if (!cfg || typeof cfg !== 'object' || !cfg.apiKey || !cfg.authDomain || !cfg.projectId || !cfg.appId) {
-    throw Error('Cần đủ apiKey, authDomain, projectId và appId.');
-  }
-  return cfg;
-}
-
-function cloudInfo(s) {
-  $('cloudSetupInfo').textContent = s;
-}
-
-function cloudDownloadConfigured() {
-  const cfg = cloudParseConfig($('cloudConfig').value);
-  const html = '<!doctype html>\n' + document.documentElement.outerHTML;
-  
-  // Hỗ trợ tìm kiếm cả cú pháp window.CLOUD_PRESET và const CLOUD_PRESET
-  let mark = 'window.CLOUD_PRESET = null;';
-  if (!html.includes(mark)) {
-    mark = 'const CLOUD_PRESET = null;';
-  }
-  if (!html.includes(mark)) {
-    throw Error('Không tìm thấy vị trí gắn cấu hình ứng dụng trong index.html');
-  }
-
-  const replacement = mark.startsWith('window.')
-    ? 'window.CLOUD_PRESET = ' + JSON.stringify(cfg).replace(/</g, '\\u003c') + ';'
-    : 'const CLOUD_PRESET = ' + JSON.stringify(cfg).replace(/</g, '\\u003c') + ';';
-
-  const built = html.replace(mark, replacement);
-  const blob = new Blob([built], { type: 'text/html;charset=utf-8' });
-  const a = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  a.href = url;
-  a.download = 'index.html';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
-
-  localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify(cfg));
-  cloudInfo('✅ Đã tạo index.html chứa cấu hình dự án của m. Đưa file này cùng index.css, index.js lên hosting HTTPS. Sau đó thêm miền web trong Firebase Authentication → Authorized domains.');
-}
-
-async function cloudSDK() {
-  if (firebaseSDK) return firebaseSDK;
-  const [app, auth, firestore] = await Promise.all([
-    import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),
-    import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js'),
-    import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js')
-  ]);
-  firebaseSDK = { ...app, ...auth, ...firestore };
-  return firebaseSDK;
-}
-
-async function cloudInit(cfg) {
-  if (cloudConfigured) return;
-  const F = await cloudSDK();
-  cloudApp = F.initializeApp(cfg, 'mai-anh-closet-' + cfg.projectId);
-  cloudAuth = F.getAuth(cloudApp);
-  cloudDB = F.getFirestore(cloudApp);
-  cloudConfigured = true;
-  CLOUD_CFG = cfg;
-  cloudLog('Google Sync đã sẵn sàng', 'Bấm Kết nối Google để đăng nhập.');
-
-  F.onAuthStateChanged(cloudAuth, async user => {
-    cloudUser = user;
-    $('cloudLogout').classList.toggle('hidden', !user);
-    $('cloudConnect').textContent = user ? '☁ Đồng bộ ngay' : '☁ Kết nối Google';
-    if (user) {
-      cloudLog('Đã đăng nhập: ' + (user.email || 'Google'), 'Đang kiểm tra dữ liệu từ cloud...');
-      try {
-        await cloudSync();
-      } catch (e) {
-        cloudProgress('⚠ ' + e.message);
-      }
-    } else {
-      cloudLog('Google Sync đã cấu hình', 'Đăng nhập để đồng bộ tủ đồ.');
-      cloudProgress('');
-    }
-  });
-}
-
-async function cloudLogin() {
-  if (!CLOUD_CFG) {
-    $('cloudPanel').classList.remove('hidden');
-    cloudInfo('Chưa có cấu hình Firebase. Làm các bước trong bảng này một lần nha.');
-    return;
-  }
-  try {
-    await cloudInit(CLOUD_CFG);
-    if (cloudUser) {
-      await cloudSync();
-      return;
-    }
-    const F = firebaseSDK;
-    await F.signInWithPopup(cloudAuth, new F.GoogleAuthProvider());
-    $('cloudPanel').classList.add('hidden');
-  } catch (e) {
-    cloudProgress('⚠ ' + e.message);
-    if (e.code === 'auth/unauthorized-domain') {
-      alert('Cần thêm tên miền trang web vào Firebase → Authentication → Settings → Authorized domains.');
-    } else if (location.protocol === 'file:') {
-      alert('Để đăng nhập Google ổn định, m phải mở ứng dụng qua một đường link HTTPS đã đăng lên web, không phải file HTML trong máy.');
-    } else {
-      alert('Google Sync chưa kết nối: ' + e.message);
-    }
-  }
-}
-
-function cloudDoc(store, id) {
-  return firebaseSDK.doc(cloudDB, 'users', cloudUser.uid, store, id);
-}
-
-function cloudDownsize(i) {
-  const obj = { ...i };
-  const bytes = s => new TextEncoder().encode(s || '').length;
-  if (bytes(JSON.stringify(obj)) > 850000) {
-    delete obj.original;
-  }
-  // Giới hạn Firestore ~1 MiB; bảo vệ chống tràn bộ nhớ
-  if (bytes(JSON.stringify(obj)) > 850000) {
-    throw Error('Ảnh ' + (i.name || '') + ' quá lớn để lưu cloud. Hãy dùng ảnh nhỏ hơn; ảnh vẫn được giữ trên máy.');
-  }
-  return obj;
-}
-
-async function cloudSync() {
-  if (!cloudUser || cloudBusy) return;
-  cloudBusy = true;
-  try {
-    const F = firebaseSDK;
-    const queue = cloudPending();
-    cloudProgress('⏳ Đang đồng bộ...');
-
-    for (const change of queue) {
-      const target = cloudDoc(change.store, change.id);
-      if (change.action === 'delete') {
-        await F.deleteDoc(target);
-      } else {
-        const obj = await req(tx(change.store).get(change.id));
-        if (obj) {
-          await F.setDoc(target, change.store === 'items' ? cloudDownsize(obj) : obj);
-        } else {
-          await F.deleteDoc(target);
-        }
-      }
-      const pending = cloudPending();
-      localStorage.setItem(CLOUD_PENDING_KEY, JSON.stringify(pending.filter(x => !(x.store === change.store && x.id === change.id && x.when === change.when))));
-    }
-
-    for (const store of ['items', 'looks']) {
-      const snapshot = await F.getDocs(F.collection(cloudDB, 'users', cloudUser.uid, store));
-      const remote = new Map(snapshot.docs.map(x => [x.id, x.data()]));
-      const local = await req(tx(store).getAll());
-      const localMap = new Map(local.map(x => [x.id, x]));
-
-      for (const [id, obj] of remote) {
-        const existing = localMap.get(id);
-        if (!existing || (obj.updated || obj.added || 0) > (existing.updated || existing.added || 0)) {
-          await localPersist(store, { ...obj, id });
-        }
-      }
-
-      const seen = cloudSeen(store);
-      for (const obj of local) {
-        if (!remote.has(obj.id)) {
-          if (seen.has(obj.id)) {
-            await localRemoveSilent(store, obj.id);
-          } else {
-            await F.setDoc(cloudDoc(store, obj.id), store === 'items' ? cloudDownsize(obj) : obj);
-            remote.set(obj.id, obj);
-          }
-        }
-      }
-      cloudSaveSeen(store, new Set(remote.keys()));
-    }
-
-    await reload();
-    cloudLog('✓ Đã đồng bộ Google', `${cloudUser.email || 'Tài khoản Google'} · ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`);
-    cloudProgress('✓ Tủ đồ đã lưu trên cloud và trên thiết bị này.');
-  } catch (e) {
-    cloudLog('⚠ Chưa đồng bộ xong', 'Dữ liệu vẫn lưu trên thiết bị này.');
-    cloudProgress('⚠ ' + e.message);
-    throw e;
-  } finally {
-    cloudBusy = false;
-  }
-}
-
-async function localPersist(store, obj) {
-  await req(tx(store, 'readwrite').put(obj));
-}
-
-async function localRemoveSilent(store, id) {
-  await req(tx(store, 'readwrite').delete(id));
-}
-
-// Ghi đè hàm persist và remove để hỗ trợ đồng bộ hàng đợi cloud
-persist = async function (store, obj) {
-  obj.updated = Date.now();
-  await basePersist(store, obj);
-  cloudQueue(store, obj.id, 'upsert');
-};
-
-remove = async function (store, id) {
-  await baseRemove(store, id);
-  cloudQueue(store, id, 'delete');
-};
-
-// =============================================================================
-// 11. ĐĂNG KÝ SỰ KIỆN CLOUD & KHỞI ĐỘNG ỨNG DỤNG
-// =============================================================================
-$('cloudConnect').onclick = () => cloudLogin();
-$('cloudLogout').onclick = async () => {
-  if (cloudAuth) await firebaseSDK.signOut(cloudAuth);
-};
-$('cloudClose').onclick = () => $('cloudPanel').classList.add('hidden');
-$('cloudBuild').onclick = () => {
-  try {
-    cloudDownloadConfigured();
-  } catch (e) {
-    cloudInfo('⚠ ' + e.message);
-  }
-};
-$('cloudApply').onclick = async () => {
-  try {
-    const cfg = cloudParseConfig($('cloudConfig').value);
-    localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify(cfg));
-    await cloudInit(cfg);
-    await cloudLogin();
-    cloudInfo('Đã kết nối thử. Nhớ tạo file web đã cấu hình và đưa lên hosting.');
-  } catch (e) {
-    cloudInfo('⚠ ' + e.message);
-  }
-};
-
-window.addEventListener('online', () => {
-  if (cloudUser) cloudSchedule();
-});
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && cloudUser) cloudSchedule();
-});
-
-if (CLOUD_CFG) {
-  cloudInit(CLOUD_CFG).catch(e => cloudProgress('⚠ Không mở được Google Sync: ' + e.message));
-}
-
-// Khởi tạo ứng dụng
 (async () => {
   try {
     $('itemCat').innerHTML = CATS.map(c => `<option>${c}</option>`).join('');
     db = await openDB();
     await reload();
   } catch (e) {
-    document.querySelector('.shell').insertAdjacentHTML(
-      'afterbegin',
-      '<div class="topnote">⚠️ Trình duyệt đang chặn lưu dữ liệu. Hãy mở file bằng Chrome/Edge bình thường (không ở chế độ ẩn danh). ' + esc(e.message) + '</div>'
-    );
+    toast('Trình duyệt chặn lưu dữ liệu: ' + esc(e.message));
   }
 })();
