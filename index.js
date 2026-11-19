@@ -1022,10 +1022,12 @@ $('dialogBack').onclick = e => {
 // =============================================================================
 // 10. GOOGLE APPS SCRIPT ACTIONS & MODAL SETTINGS
 // =============================================================================
-$('settingsBtn').onclick = () => {
-  $('scriptUrlInput').value = appsScriptUrl;
-  $('settingsBack').classList.remove('hidden');
-};
+if ($('settingsBtn')) {
+  $('settingsBtn').onclick = () => {
+    $('scriptUrlInput').value = appsScriptUrl;
+    $('settingsBack').classList.remove('hidden');
+  };
+}
 
 $('closeSettings').onclick = () => $('settingsBack').classList.add('hidden');
 $('settingsBack').onclick = e => {
