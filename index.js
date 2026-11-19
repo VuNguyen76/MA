@@ -42,8 +42,8 @@ let photoGeneration = 0;
 let restoreRequested = false;
 
 // Google Apps Script Web App URL
-const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwWZg-Inz8lrRFjwp8GBJJS0k7t9nwbGkYumLdHiPXtIiJm8JzTSqHPrnUX4ujJ0bSa8A/exec';
-const APPS_SCRIPT_KEY = 'mai-anh-apps-script-url-v1';
+const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQFKwenRbCRCRNVscF2q-B8WYiWvB_PmXoeJ6nwkUjrS0O7UmMMi-_xV08t_r6WMB83w/exec';
+const APPS_SCRIPT_KEY = 'mai-anh-apps-script-url-v2';
 let appsScriptUrl = localStorage.getItem(APPS_SCRIPT_KEY) || DEFAULT_SCRIPT_URL;
 
 // =============================================================================
