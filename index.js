@@ -194,6 +194,98 @@ async function reload() {
 }
 
 // =============================================================================
+// 5B. ĐỒNG BỘ CLOUD DATABASE ĐA THIẾT BỊ QUA GOOGLE DRIVE
+// =============================================================================
+let isSyncing = false;
+
+async function fetchCloudDatabase(showToast = false) {
+  if (!appsScriptUrl || isSyncing) return false;
+  isSyncing = true;
+  const statusEl = $('syncStatusText');
+  if (statusEl) statusEl.textContent = 'Đang tải...';
+
+  try {
+    const response = await fetch(appsScriptUrl, { method: 'GET' });
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      console.warn('Apps Script chưa có doGet:', text.slice(0, 100));
+      return false;
+    }
+
+    if (data && Array.isArray(data.items)) {
+      for (const item of data.items) {
+        await req(tx('items', 'readwrite').put(item));
+      }
+      if (Array.isArray(data.looks)) {
+        for (const look of data.looks) {
+          await req(tx('looks', 'readwrite').put(look));
+        }
+      }
+      await reload();
+      if (statusEl) statusEl.textContent = 'Đã đồng bộ ✓';
+      if (showToast) toast(`Đã đồng bộ ${data.items.length} món đồ từ Google Drive ☁`);
+      return true;
+    }
+  } catch (err) {
+    console.warn('Không thể tải từ Drive:', err.message);
+    if (showToast) toast('Chưa kết nối được Drive: ' + err.message);
+  } finally {
+    isSyncing = false;
+    setTimeout(() => {
+      if (statusEl && (statusEl.textContent.includes('✓') || statusEl.textContent === 'Đang tải...')) {
+        statusEl.textContent = 'Đồng bộ';
+      }
+    }, 4000);
+  }
+  return false;
+}
+
+async function syncDatabaseToDrive(showToast = false) {
+  if (!appsScriptUrl) return;
+  const statusEl = $('syncStatusText');
+  if (statusEl) statusEl.textContent = 'Đang lưu...';
+
+  try {
+    const allItems = await req(tx('items').getAll());
+    const allLooks = await req(tx('looks').getAll());
+
+    const payload = {
+      action: 'sync_db',
+      items: allItems,
+      looks: allLooks
+    };
+
+    const res = await fetch(appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+
+    const text = await res.text();
+    let result = {};
+    try {
+      result = JSON.parse(text);
+    } catch (_) {}
+
+    if (result.status === 'success') {
+      if (statusEl) statusEl.textContent = 'Đã lưu Drive ✓';
+      if (showToast) toast('Đã cập nhật dữ liệu tủ đồ lên Google Drive ☁');
+    }
+  } catch (err) {
+    console.warn('Lỗi lưu dữ liệu lên Drive:', err.message);
+  } finally {
+    setTimeout(() => {
+      if (statusEl && statusEl.textContent.includes('✓')) {
+        statusEl.textContent = 'Đồng bộ';
+      }
+    }, 4000);
+  }
+}
+
+// =============================================================================
 // 6. RENDER GIAO DIỆN HAUTE ATELIER
 // =============================================================================
 function render() {
@@ -251,20 +343,28 @@ function renderCloset() {
     </div>
   `).join('');
 
-  closetEl.querySelectorAll('[draggable]').forEach(el => {
+  closetEl.querySelectorAll('.item').forEach(el => {
     el.ondragstart = e => e.dataTransfer.setData('text/plain', el.dataset.id);
-  });
-
-  closetEl.querySelectorAll('[data-add]').forEach(el => {
-    el.onclick = () => addToBoard(el.dataset.add);
+    
+    // Chạm/Click bất kỳ đâu trên thẻ để phối đồ ngay (tiện lợi trên điện thoại & máy tính)
+    el.onclick = e => {
+      if (e.target.closest('[data-edit]') || e.target.closest('[data-delete]')) return;
+      addToBoard(el.dataset.id);
+    };
   });
 
   closetEl.querySelectorAll('[data-edit]').forEach(el => {
-    el.onclick = () => openModal(el.dataset.edit);
+    el.onclick = e => {
+      e.stopPropagation();
+      openModal(el.dataset.edit);
+    };
   });
 
   closetEl.querySelectorAll('[data-delete]').forEach(el => {
-    el.onclick = () => deleteItem(el.dataset.delete);
+    el.onclick = e => {
+      e.stopPropagation();
+      deleteItem(el.dataset.delete);
+    };
   });
 }
 
@@ -290,13 +390,16 @@ function renderBoard() {
           <div class="slotcaption">${esc(it.name)}</div>
         ` : `
           <div style="font-size:24px;opacity:.3;margin-bottom:4px">＋</div>
-          <div class="sub">Thả ảnh vào đây</div>
+          <div class="sub">Chạm hoặc thả vào đây</div>
         `}
       </div>
     `;
   }).join('');
 
   boardEl.querySelectorAll('.slot').forEach(s => {
+    const slotName = s.dataset.slot;
+
+    // Kéo thả Desktop
     s.ondragover = e => {
       e.preventDefault();
       s.classList.add('dropdrag');
@@ -306,7 +409,23 @@ function renderBoard() {
       e.preventDefault();
       s.classList.remove('dropdrag');
       const id = e.dataTransfer.getData('text/plain');
-      addToBoard(id, s.dataset.slot);
+      addToBoard(id, slotName);
+    };
+
+    // Chạm/Click trên điện thoại & máy tính
+    s.onclick = e => {
+      if (e.target.closest('[data-remove]')) return;
+      if (board[slotName]) {
+        delete board[slotName];
+        renderBoard();
+        toast(`Đã bỏ ${slotName} khỏi outfit`);
+      } else {
+        // Tự động chuyển bộ lọc sang mục này để dễ chọn đồ
+        activeFilter = slotName;
+        renderFilters();
+        renderCloset();
+        toast(`Đang lọc tủ đồ theo “${slotName}” ✿`);
+      }
     };
   });
 
@@ -365,6 +484,7 @@ function renderLooks() {
       if (!confirm('Xóa outfit này khỏi Bộ sưu tập?')) return;
       await remove('looks', b.dataset.delLook);
       await reload();
+      syncDatabaseToDrive();
     };
   });
 }
@@ -386,6 +506,7 @@ async function deleteItem(id) {
     if (board[k] === id) delete board[k];
   }
   await reload();
+  syncDatabaseToDrive();
 }
 
 // =============================================================================
@@ -826,6 +947,7 @@ $('submitItem').onclick = async () => {
     closeModal();
     await reload();
     toast('Đã cất trang phục vào tủ! ♡');
+    syncDatabaseToDrive();
   } catch (e) {
     alert('Không lưu được đồ: ' + e.message);
   } finally {
@@ -850,6 +972,7 @@ $('saveLook').onclick = async () => {
     await persist('looks', look);
     await reload();
     toast('Đã lưu outfit vào Bộ sưu tập! ♡');
+    syncDatabaseToDrive();
   } catch (e) {
     alert('Lưu outfit thất bại: ' + e.message);
   }
@@ -962,6 +1085,7 @@ $('driveSyncAllBtn').onclick = async () => {
   $('driveSyncAllBtn').disabled = false;
   $('driveProgress').textContent = `🎉 Hoàn tất! Đã tải ${successCount}/${base64Items.length} ảnh lên Google Drive và giải phóng bộ nhớ.`;
   toast(`Đã đồng bộ ${successCount} ảnh lên Drive thành công ☁`);
+  await syncDatabaseToDrive();
 };
 
 // =============================================================================
@@ -1006,12 +1130,21 @@ $('restoreInput').onchange = async e => {
     }
     await reload();
     toast('Khôi phục tủ đồ thành công ♡');
+    syncDatabaseToDrive();
   } catch (err) {
     alert('Khôi phục thất bại: ' + err.message);
   } finally {
     e.target.value = '';
   }
 };
+
+if ($('syncCloudBtn')) {
+  $('syncCloudBtn').onclick = async () => {
+    toast('Đang đồng bộ dữ liệu với Google Drive ☁...');
+    await fetchCloudDatabase(true);
+    await syncDatabaseToDrive();
+  };
+}
 
 // =============================================================================
 // 12. KHỞI CHẠY ỨNG DỤNG
@@ -1021,6 +1154,8 @@ $('restoreInput').onchange = async e => {
     $('itemCat').innerHTML = CATS.map(c => `<option>${c}</option>`).join('');
     db = await openDB();
     await reload();
+    // Tự động tải dữ liệu mới nhất từ Google Drive về máy khi mở app
+    fetchCloudDatabase(false);
   } catch (e) {
     toast('Trình duyệt chặn lưu dữ liệu: ' + esc(e.message));
   }
