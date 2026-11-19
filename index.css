@@ -602,7 +602,7 @@ button:active {
 }
 
 .mixcanvas.empty::after {
-  content: 'Chọn đồ từ tủ rồi bấm “Mix đồ ngay”';
+  content: 'Chạm món đồ bên trái để phối trực tiếp';
   position: absolute;
   inset: 24px;
   display: grid;
@@ -1486,5 +1486,186 @@ button:active {
   .ai-model-chip,
   .btn-ai {
     width: 100%;
+  }
+}
+
+
+/* ==========================================================================
+   TASTE REFINEMENT: 3-ZONE HEADER, ICON PILLS, EDITORIAL ITEM CARDS
+   ========================================================================== */
+.app-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.app-header .studio-nav {
+  margin-bottom: 0;
+}
+
+.app-header .header-tools {
+  justify-content: flex-end;
+}
+
+.icon-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 42px;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline-mid);
+  background: var(--bg-card);
+  color: var(--sage-deep);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-subtle);
+  transition: transform 0.35s var(--ease), background 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+.icon-pill:hover {
+  background: var(--sage-light);
+  border-color: var(--sage-muted);
+  transform: translateY(-1px);
+}
+
+.icon-pill:active {
+  transform: scale(0.96);
+}
+
+.icon-pill-sm {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+
+.sync-label:empty {
+  display: none;
+}
+
+/* Magnetic Button-in-Button physics */
+.btn-primary:active,
+.btn-accent:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:hover .btn-bubble,
+.btn-accent:hover .btn-bubble {
+  transform: translate(2px, -1px) scale(1.06);
+}
+
+.btn-primary .btn-bubble,
+.btn-accent .btn-bubble {
+  transition: transform 0.45s var(--ease);
+}
+
+/* Editorial Clothing Card — zero bottom button noise */
+.item {
+  cursor: pointer;
+  transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease), border-color 0.3s var(--ease);
+}
+
+.item:active {
+  transform: scale(0.985);
+}
+
+.item.item-selected {
+  border-color: var(--sage-deep);
+  box-shadow: 0 0 0 2px var(--sage-deep), var(--shadow-card);
+}
+
+.item-media {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.item-picked-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--sage-deep);
+  color: #FAF8F5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  box-shadow: 0 4px 12px rgba(26, 51, 35, 0.25);
+  z-index: 2;
+}
+
+.item-hover-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 0.28s var(--ease), transform 0.35s var(--ease);
+  z-index: 2;
+}
+
+.item:hover .item-hover-actions,
+.item:focus-within .item-hover-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.item-fab {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline-mid);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--sage-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease), background 0.2s, color 0.2s;
+}
+
+.item-fab:hover {
+  background: var(--sage-deep);
+  color: #FFFFFF;
+  transform: scale(1.06);
+}
+
+.item-fab-danger:hover {
+  background: #A9382E;
+  border-color: #A9382E;
+  color: #FFFFFF;
+}
+
+@media (hover: none) {
+  .item-hover-actions {
+    opacity: 0.92;
+    transform: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-header {
+    grid-template-columns: 1fr auto;
+    row-gap: 14px;
+  }
+  .app-header .studio-nav {
+    grid-column: 1 / -1;
+    order: 3;
   }
 }

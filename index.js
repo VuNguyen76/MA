@@ -255,9 +255,9 @@ async function fetchCloudDatabase(showToast = false) {
     if (iconEl) iconEl.classList.remove('fa-spin');
     setTimeout(() => {
       if (statusEl && (statusEl.textContent === 'Đã đồng bộ' || statusEl.textContent === 'Đang tải...')) {
-        statusEl.textContent = 'Đồng bộ';
+        statusEl.textContent = '';
       }
-    }, 3000);
+    }, 2500);
   }
   return false;
 }
@@ -310,9 +310,9 @@ async function syncDatabaseToDrive(showToast = false, deletedFileIds = []) {
     if (iconEl) iconEl.classList.remove('fa-spin');
     setTimeout(() => {
       if (statusEl && statusEl.textContent === 'Đã lưu') {
-        statusEl.textContent = 'Đồng bộ';
+        statusEl.textContent = '';
       }
-    }, 3000);
+    }, 2500);
   }
 }
 
@@ -320,8 +320,8 @@ async function syncDatabaseToDrive(showToast = false, deletedFileIds = []) {
 // 6. RENDER GIAO DIỆN HAUTE ATELIER
 // =============================================================================
 function render() {
-  $('count').textContent = items.length + ' món đồ';
-  $('savedCount').textContent = '(' + looks.length + ')';
+  if ($('count')) $('count').textContent = items.length + ' món đồ';
+  $('savedCount').textContent = looks.length ? `(${looks.length})` : '';
   renderFilters();
   renderCloset();
   renderBoard();
@@ -359,26 +359,40 @@ function renderCloset() {
     return;
   }
 
-  closetEl.innerHTML = shown.map(i => `
-    <div class="item" draggable="true" data-id="${esc(i.id)}">
-      <img src="${i.photo}" alt="${esc(i.name)}" loading="lazy">
+  const selectedIds = new Set(Object.values(board));
+
+  closetEl.innerHTML = shown.map(i => {
+    const isSelected = selectedIds.has(i.id);
+    return `
+    <div class="item ${isSelected ? 'item-selected' : ''}" draggable="true" data-id="${esc(i.id)}">
+      <div class="item-media">
+        <img src="${i.photo}" alt="${esc(i.name)}" loading="lazy">
+        ${isSelected ? '<span class="item-picked-badge" title="Đang trong outfit"><i class="fa-solid fa-check" aria-hidden="true"></i></span>' : ''}
+        <div class="item-hover-actions">
+          <button type="button" class="item-fab" title="Sửa" aria-label="Sửa" data-edit="${esc(i.id)}"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i></button>
+          <button type="button" class="item-fab item-fab-danger" title="Xóa" aria-label="Xóa" data-delete="${esc(i.id)}"><i class="fa-regular fa-trash-can" aria-hidden="true"></i></button>
+        </div>
+      </div>
       <div class="info">
         <div class="name" title="${esc(i.name)}">${esc(i.name)}</div>
         <div class="sub">${esc(i.cat)}${i.color ? ' · ' + esc(i.color) : ''}</div>
-        <div class="actions">
-          <button type="button" class="small add" data-add="${esc(i.id)}"><i class="fa-solid fa-plus" aria-hidden="true"></i> Phối</button>
-          <button type="button" class="small" title="Sửa" aria-label="Sửa" data-edit="${esc(i.id)}"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i></button>
-          <button type="button" class="small" title="Xóa" aria-label="Xóa" data-delete="${esc(i.id)}"><i class="fa-regular fa-trash-can" aria-hidden="true"></i></button>
-        </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 
   closetEl.querySelectorAll('.item').forEach(el => {
     el.ondragstart = e => e.dataTransfer.setData('text/plain', el.dataset.id);
     el.onclick = e => {
       if (e.target.closest('[data-edit]') || e.target.closest('[data-delete]')) return;
-      addToBoard(el.dataset.id);
+      const id = el.dataset.id;
+      const existingSlot = Object.keys(board).find(k => board[k] === id);
+      if (existingSlot) {
+        delete board[existingSlot];
+        renderBoard();
+        renderCloset();
+      } else {
+        addToBoard(id);
+      }
     };
   });
 
@@ -402,7 +416,7 @@ function addToBoard(id, slot) {
   if (!it) return;
   board[slot || it.cat] = id;
   renderBoard();
-  toast('Đã thêm “' + it.name + '” vào outfit');
+  renderCloset();
 }
 
 function renderBoard() {
@@ -460,8 +474,12 @@ function renderBoard() {
       e.stopPropagation();
       delete board[b.dataset.remove];
       renderBoard();
+      renderCloset();
     };
   });
+
+  // Tự động dàn set lên Lookbook Canvas mỗi khi chọn/bỏ món
+  mixOutfit(true);
 }
 
 function renderLooks() {
@@ -547,7 +565,7 @@ function updateMixCount() {
   if (x) x.textContent = selectedPieces().length + ' món';
 }
 
-function mixOutfit() {
+function mixOutfit(silent = false) {
   const selected = selectedPieces();
   const canvas = $('mixCanvas');
   updateMixCount();
@@ -555,7 +573,7 @@ function mixOutfit() {
   if (!selected.length) {
     canvas.innerHTML = '';
     canvas.classList.add('empty');
-    toast('Hãy chọn ít nhất một món trước nha');
+    if (!silent) toast('Hãy chọn ít nhất một món trước nha');
     return;
   }
 
@@ -583,7 +601,7 @@ function mixOutfit() {
     </figure>
   `).join('');
 
-  toast('Đã dàn set ' + selected.length + ' món lên Lookbook');
+  if (!silent) toast('Đã dàn set ' + selected.length + ' món lên Lookbook');
 }
 
 // =============================================================================
@@ -1011,7 +1029,10 @@ $('saveLook').onclick = async () => {
 $('clearBoard').onclick = () => {
   board = {};
   $('lookName').value = '';
+  $('aiNote')?.classList.add('hidden');
+  $('aiResultBox')?.classList.add('hidden');
   renderBoard();
+  renderCloset();
 };
 
 $('search').oninput = renderCloset;
@@ -1032,8 +1053,6 @@ document.addEventListener('keydown', e => {
 document.querySelectorAll('.tab-pill, .tab').forEach(b => {
   b.onclick = () => switchTab(b.dataset.tab);
 });
-
-$('mixButton').onclick = mixOutfit;
 
 if ($('syncCloudBtn')) {
   $('syncCloudBtn').onclick = async () => {

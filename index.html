@@ -32,7 +32,7 @@
   <div class="ambient-glow glow-bottom" aria-hidden="true"></div>
 
   <div class="shell">
-    <!-- APP HEADER -->
+    <!-- APP HEADER (3-ZONE EDITORIAL ISLAND) -->
     <header class="app-header">
       <div class="brand">
         <div class="brand-eyebrow">
@@ -42,11 +42,23 @@
         <h1 class="brand-name">Green <em>Closet</em></h1>
       </div>
 
+      <nav class="studio-nav" aria-label="Điều hướng chính">
+        <div class="studio-nav-track">
+          <button type="button" class="tab-pill active" data-tab="studio">
+            <i class="fa-solid fa-shirt tab-icon" aria-hidden="true"></i>
+            <span>Tủ đồ</span>
+          </button>
+          <button type="button" class="tab-pill" data-tab="saved">
+            <i class="fa-regular fa-bookmark tab-icon" aria-hidden="true"></i>
+            <span>Đã lưu <span id="savedCount"></span></span>
+          </button>
+        </div>
+      </nav>
+
       <div class="header-tools">
-        <div class="counter-badge" id="count">0 món đồ</div>
-        <button type="button" class="tool-btn" id="syncCloudBtn" title="Đồng bộ dữ liệu">
-          <i class="fa-solid fa-arrows-rotate tool-icon" id="syncIcon" aria-hidden="true"></i>
-          <span class="tool-text" id="syncStatusText">Đồng bộ</span>
+        <button type="button" class="icon-pill" id="syncCloudBtn" title="Đồng bộ dữ liệu" aria-label="Đồng bộ dữ liệu">
+          <i class="fa-solid fa-arrows-rotate" id="syncIcon" aria-hidden="true"></i>
+          <span class="sync-label" id="syncStatusText"></span>
         </button>
         <button type="button" class="btn-primary" id="uploadBtn">
           <span>Thêm đồ</span>
@@ -54,20 +66,6 @@
         </button>
       </div>
     </header>
-
-    <!-- TAB NAVIGATION -->
-    <nav class="studio-nav" aria-label="Điều hướng chính">
-      <div class="studio-nav-track">
-        <button type="button" class="tab-pill active" data-tab="studio">
-          <i class="fa-solid fa-shirt tab-icon" aria-hidden="true"></i>
-          <span>Tủ đồ &amp; Phối đồ</span>
-        </button>
-        <button type="button" class="tab-pill" data-tab="saved">
-          <i class="fa-regular fa-bookmark tab-icon" aria-hidden="true"></i>
-          <span>Outfit đã lưu <span id="savedCount"></span></span>
-        </button>
-      </div>
-    </nav>
 
     <!-- MAIN WORKSPACE -->
     <main id="studio" class="workspace-grid">
@@ -97,9 +95,8 @@
                 <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
                 <span>AI Gợi ý</span>
               </button>
-              <button type="button" class="btn-subtle" id="clearBoard">
+              <button type="button" class="icon-pill icon-pill-sm" id="clearBoard" title="Làm mới bảng phối" aria-label="Làm mới bảng phối">
                 <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
-                <span>Làm mới</span>
               </button>
             </div>
           </div>
@@ -115,16 +112,10 @@
             <div id="mixCanvas" class="mixcanvas empty" aria-live="polite" aria-label="Khung ảnh phối đồ"></div>
 
             <div class="artboard-actions">
-              <button type="button" class="btn-primary btn-block" id="mixButton">
-                <span>Mix đồ ngay</span>
-                <span class="btn-bubble"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+              <button type="button" class="btn-primary btn-block" id="aiGenerateBtn">
+                <span>Xem trên Ma-nơ-canh AI</span>
+                <span class="btn-bubble"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></span>
               </button>
-              <div class="ai-gen-row">
-                <button type="button" class="btn-ai btn-block" id="aiGenerateBtn">
-                  <span>Xem trên Ma-nơ-canh AI</span>
-                  <span class="btn-bubble"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></span>
-                </button>
-              </div>
             </div>
 
             <div id="aiResultBox" class="ai-result-box hidden">
