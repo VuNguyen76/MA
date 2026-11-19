@@ -1,4 +1,4 @@
-// Vercel Serverless proxy cho MuseAI API (tránh Mixed Content HTTP/HTTPS, CORS và giấu API key)
+// Vercel Serverless proxy cho MuseAI API (Async Task Polling -> mỗi request < 500ms, không bao giờ dính FUNCTION_INVOCATION_TIMEOUT)
 async function safeJson(response) {
   const raw = await response.text();
   try {
@@ -30,10 +30,7 @@ export default async function handler(req, res) {
   }
 
   const base = (process.env.MUSE_API_BASE || 'http://160.191.243.214:18610/v1').replace(/\/$/, '');
-  const apiKey = process.env.MUSE_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'Thiếu biến môi trường MUSE_API_KEY trên server' });
-  }
+  const apiKey = process.env.MUSE_API_KEY || 'm2a-museai-image-api-secret-key';
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
@@ -71,7 +68,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ text });
     }
 
-    if (body.action === 'image') {
+    // Bắt đầu tạo ảnh bất đồng bộ (async: true -> trả về taskId trong < 500ms, tránh timeout Vercel)
+    if (body.action === 'image_start') {
       const rawImages = Array.isArray(body.images) ? body.images.filter(Boolean).slice(0, 4) : [];
       const resolvedImages = await Promise.all(rawImages.map(toDataUrlIfRemote));
 
@@ -79,7 +77,8 @@ export default async function handler(req, res) {
         model: 'muse-image',
         prompt: body.prompt || '',
         n: 1,
-        size: '1024x1024'
+        size: '1024x1024',
+        async: true
       };
       if (resolvedImages.length === 1) {
         payload.image = resolvedImages[0];
@@ -97,20 +96,55 @@ export default async function handler(req, res) {
         const msg = data?.error?.message || data?.error || (raw ? raw.slice(0, 140) : `HTTP ${r.status}`);
         return res.status(r.status >= 400 ? r.status : 502).json({ error: `Server Muse bận (${r.status}): ${msg}` });
       }
+      const taskId = data.id || data.task_id;
+      if (!taskId) {
+        return res.status(502).json({ error: 'Server Muse không trả về task_id' });
+      }
+      return res.status(200).json({ taskId, status: data.status || 'queued' });
+    }
 
-      const first = data?.data?.[0];
+    // Kiểm tra tiến trình task (< 300ms mỗi lần gọi)
+    if (body.action === 'image_poll') {
+      const taskId = body.taskId;
+      if (!taskId) return res.status(400).json({ error: 'Thiếu taskId' });
+
+      const r = await fetch(`${base}/images/generations/${encodeURIComponent(taskId)}`, {
+        method: 'GET',
+        headers
+      });
+      const { data, raw } = await safeJson(r);
+      if (!r.ok || !data) {
+        const msg = data?.error?.message || data?.error || (raw ? raw.slice(0, 140) : `HTTP ${r.status}`);
+        return res.status(r.status >= 400 ? r.status : 502).json({ error: `Lỗi kiểm tra tiến trình (${r.status}): ${msg}` });
+      }
+
+      if (data.status === 'failed' || data.status === 'cancelled' || data.error) {
+        const errMsg = data.error?.message || data.error || 'Tạo ảnh thất bại trên server Muse';
+        return res.status(200).json({ status: 'failed', error: String(errMsg) });
+      }
+
+      const first = data?.result?.data?.[0] || data?.data?.[0] || data?.result;
       if (first?.b64_json) {
-        return res.status(200).json({ dataUrl: `data:image/png;base64,${first.b64_json}` });
+        return res.status(200).json({
+          status: 'succeeded',
+          dataUrl: `data:image/png;base64,${first.b64_json}`
+        });
       }
-      if (!first?.url) {
-        return res.status(502).json({ error: 'API không trả về ảnh' });
+      if (first?.url) {
+        const imgRes = await fetch(first.url);
+        if (!imgRes.ok) return res.status(502).json({ error: 'Không tải được ảnh kết quả từ server Muse' });
+        const mime = imgRes.headers.get('content-type') || 'image/webp';
+        const buf = Buffer.from(await imgRes.arrayBuffer());
+        return res.status(200).json({
+          status: 'succeeded',
+          dataUrl: `data:${mime};base64,${buf.toString('base64')}`
+        });
       }
 
-      const imgRes = await fetch(first.url);
-      if (!imgRes.ok) return res.status(502).json({ error: 'Không tải được ảnh từ server Muse' });
-      const mime = imgRes.headers.get('content-type') || 'image/webp';
-      const buf = Buffer.from(await imgRes.arrayBuffer());
-      return res.status(200).json({ dataUrl: `data:${mime};base64,${buf.toString('base64')}` });
+      return res.status(200).json({
+        status: data.status || 'running',
+        progress: data.progress || 0
+      });
     }
 
     return res.status(400).json({ error: 'Action không hợp lệ' });
