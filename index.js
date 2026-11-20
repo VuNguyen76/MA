@@ -32,6 +32,7 @@ const $ = (id) => document.getElementById(id);
 let db = null;
 let items = [];
 let looks = [];
+let selectedIds = [];
 let board = {};
 let activeFilter = 'Tất cả';
 let editId = null;
@@ -361,10 +362,10 @@ function renderCloset() {
     return;
   }
 
-  const selectedIds = new Set(Object.values(board));
+  const pickedSet = new Set(selectedIds);
 
   closetEl.innerHTML = shown.map(i => {
-    const isSelected = selectedIds.has(i.id);
+    const isSelected = pickedSet.has(i.id);
     return `
     <div class="item ${isSelected ? 'item-selected' : ''}" draggable="true" data-id="${esc(i.id)}">
       <div class="item-media">
@@ -387,15 +388,7 @@ function renderCloset() {
     el.ondragstart = e => e.dataTransfer.setData('text/plain', el.dataset.id);
     el.onclick = e => {
       if (e.target.closest('[data-zoom]') || e.target.closest('[data-edit]') || e.target.closest('[data-delete]')) return;
-      const id = el.dataset.id;
-      const existingSlot = Object.keys(board).find(k => board[k] === id);
-      if (existingSlot) {
-        delete board[existingSlot];
-        renderBoard();
-        renderCloset();
-      } else {
-        addToBoard(id);
-      }
+      toggleItemSelection(el.dataset.id);
     };
   });
 
@@ -422,75 +415,83 @@ function renderCloset() {
   });
 }
 
-function addToBoard(id, slot) {
+// Đồng bộ selectedIds -> board (tương thích ngược)
+function syncLegacyBoard() {
+  board = {};
+  for (const id of selectedIds) {
+    const it = items.find(x => x.id === id);
+    if (it && !board[it.cat]) board[it.cat] = id;
+  }
+}
+
+// Quy tắc giới hạn thông minh theo loại đồ (Phụ kiện & Túi xách: KHÔNG GIỚI HẠN)
+function toggleItemSelection(id, forceAdd = false) {
   const it = items.find(x => x.id === id);
   if (!it) return;
-  board[slot || it.cat] = id;
+
+  const idx = selectedIds.indexOf(id);
+  if (idx !== -1 && !forceAdd) {
+    selectedIds.splice(idx, 1);
+    syncLegacyBoard();
+    renderBoard();
+    renderCloset();
+    return;
+  }
+  if (idx !== -1) return;
+
+  const bottomGroup = ['Quần', 'Chân váy', 'Váy liền'];
+  if (bottomGroup.includes(it.cat)) {
+    selectedIds = selectedIds.filter(eid => {
+      const e = items.find(x => x.id === eid);
+      return e && !bottomGroup.includes(e.cat);
+    });
+  } else if (it.cat === 'Giày dép' || it.cat === 'Áo khoác') {
+    selectedIds = selectedIds.filter(eid => {
+      const e = items.find(x => x.id === eid);
+      return e && e.cat !== it.cat;
+    });
+  } else if (it.cat === 'Áo') {
+    const existingTops = selectedIds.filter(eid => items.find(x => x.id === eid)?.cat === 'Áo');
+    if (existingTops.length >= 2) {
+      selectedIds = selectedIds.filter(eid => eid !== existingTops[0]);
+    }
+  }
+  // 'Phụ kiện' & 'Túi xách' -> không giới hạn số lượng
+
+  selectedIds.push(id);
+  syncLegacyBoard();
   renderBoard();
   renderCloset();
 }
 
+function addToBoard(id) {
+  toggleItemSelection(id, true);
+}
+
 function renderBoard() {
+  // Đảm bảo nếu selectedIds rỗng nhưng board cũ có dữ liệu thì đồng bộ sang
+  if (!selectedIds.length && Object.keys(board).length) {
+    selectedIds = Object.values(board).filter(Boolean);
+  }
+  selectedIds = selectedIds.filter(id => items.some(x => x.id === id));
+  syncLegacyBoard();
   updateMixCount();
-  const boardEl = $('board');
-  boardEl.innerHTML = SLOTS.map(c => {
-    const it = items.find(i => i.id === board[c]);
-    return `
-      <div class="slot ${it ? 'filled' : ''}" data-slot="${esc(c)}">
-        <span class="slotlabel">${esc(c)}</span>
-        ${it ? `
-          <button type="button" class="slotremove" data-remove="${esc(c)}" title="Bỏ khỏi outfit" aria-label="Bỏ khỏi outfit"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-          <img alt="${esc(it.name)}" src="${it.photo}">
-          <div class="slotcaption">${esc(it.name)}</div>
-        ` : `
-          <i class="fa-solid fa-plus slot-empty-ico" aria-hidden="true"></i>
-          <div class="sub">Chạm hoặc thả vào đây</div>
-        `}
-      </div>
-    `;
-  }).join('');
-
-  boardEl.querySelectorAll('.slot').forEach(s => {
-    const slotName = s.dataset.slot;
-
-    s.ondragover = e => {
-      e.preventDefault();
-      s.classList.add('dropdrag');
-    };
-    s.ondragleave = () => s.classList.remove('dropdrag');
-    s.ondrop = e => {
-      e.preventDefault();
-      s.classList.remove('dropdrag');
-      const id = e.dataTransfer.getData('text/plain');
-      addToBoard(id, slotName);
-    };
-
-    s.onclick = e => {
-      if (e.target.closest('[data-remove]')) return;
-      if (board[slotName]) {
-        delete board[slotName];
-        renderBoard();
-        toast(`Đã bỏ ${slotName} khỏi outfit`);
-      } else {
-        activeFilter = slotName;
-        renderFilters();
-        renderCloset();
-        toast(`Đang lọc tủ đồ theo “${slotName}”`);
-      }
-    };
-  });
-
-  boardEl.querySelectorAll('[data-remove]').forEach(b => {
-    b.onclick = (e) => {
-      e.stopPropagation();
-      delete board[b.dataset.remove];
-      renderBoard();
-      renderCloset();
-    };
-  });
-
-  // Tự động dàn set lên Lookbook Canvas mỗi khi chọn/bỏ món
   mixOutfit(true);
+}
+
+function getLookPieces(l) {
+  if (Array.isArray(l.items) && l.items.length) {
+    return l.items
+      .map(id => items.find(i => i.id === id))
+      .filter(Boolean)
+      .map(it => ({ slot: it.cat, it }));
+  }
+  if (l.board && typeof l.board === 'object') {
+    return Object.entries(l.board)
+      .map(([slot, id]) => ({ slot, it: items.find(i => i.id === id) }))
+      .filter(x => x.it);
+  }
+  return [];
 }
 
 function renderLooks() {
@@ -501,15 +502,13 @@ function renderLooks() {
   }
 
   grid.innerHTML = looks.map(l => {
-    const selected = Object.entries(l.board)
-      .map(([slot, id]) => ({ slot, it: items.find(i => i.id === id) }))
-      .filter(x => x.it);
+    const selected = getLookPieces(l);
 
     return `
       <article class="lookcard">
         ${l.aiPhoto ? `<div class="look-ai-wrap"><img class="look-ai-thumb" src="${l.aiPhoto}" alt="${esc(l.name)}" loading="lazy"><button type="button" class="item-fab look-zoom-btn" title="Xem toàn màn hình" aria-label="Xem toàn màn hình" data-zoom-look="${esc(l.id)}"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i></button></div>` : ''}
         <div class="lookpics">
-          ${selected.slice(0, 6).map(x => `
+          ${selected.slice(0, 8).map(x => `
             <img src="${x.it.photo}" title="${esc(x.slot)}: ${esc(x.it.name)}" alt="${esc(x.it.name)}">
           `).join('') || (l.aiPhoto ? '' : '<div class="placeholder">Chưa có ảnh</div>')}
         </div>
@@ -534,10 +533,14 @@ function renderLooks() {
     b.onclick = () => {
       const l = looks.find(x => x.id === b.dataset.load);
       if (!l) return;
-      board = { ...l.board };
+      selectedIds = Array.isArray(l.items) && l.items.length
+        ? [...l.items]
+        : Object.values(l.board || {}).filter(Boolean);
+      syncLegacyBoard();
       $('lookName').value = l.name;
       switchTab('studio');
       renderBoard();
+      renderCloset();
       toast('Đã mở outfit để phối lại');
     };
   });
@@ -565,18 +568,36 @@ async function deleteItem(id) {
   if (!i) return;
   if (!confirm(`Xóa “${i.name}” khỏi tủ đồ? Món này cũng sẽ không hiện trong các outfit đã lưu.`)) return;
   await remove('items', id);
-  for (let k in board) {
-    if (board[k] === id) delete board[k];
-  }
+  selectedIds = selectedIds.filter(x => x !== id);
+  syncLegacyBoard();
   await reload();
   syncDatabaseToDrive(false, i.driveFileId ? [i.driveFileId] : []);
 }
 
 // =============================================================================
-// 7. LOOKBOOK STUDIO (MIX & MATCH FLAT-LAY)
+// 7. LOOKBOOK STUDIO (NON-OVERLAPPING AUTO-PACKING CANVAS)
 // =============================================================================
+function getItemZone(it) {
+  const name = (it.name || '').toLowerCase();
+  if (it.cat === 'Váy liền') return 'DRESS';
+  if (it.cat === 'Áo' || it.cat === 'Áo khoác') return 'UPPER';
+  if (it.cat === 'Quần' || it.cat === 'Chân váy') return 'LOWER';
+  if (it.cat === 'Giày dép') return 'FOOT';
+  if (it.cat === 'Túi xách') return 'SIDE';
+  if (/nón|mũ|kính|kẹp|băng đô|cài/.test(name)) return 'HEAD';
+  if (/khăn|choàng|vòng cổ|dây chuyền|choker|cà vạt|nơ/.test(name)) return 'NECK';
+  if (/đai|corset|thắt lưng|belt/.test(name)) return 'WAIST';
+  return 'SIDE';
+}
+
 function selectedPieces() {
-  return SLOTS.map(cat => ({ cat, it: items.find(x => x.id === board[cat]) })).filter(x => x.it);
+  if (!selectedIds.length && Object.keys(board).length) {
+    selectedIds = Object.values(board).filter(Boolean);
+  }
+  return selectedIds
+    .map(id => items.find(x => x.id === id))
+    .filter(Boolean)
+    .map(it => ({ cat: it.cat, zone: getItemZone(it), it }));
 }
 
 function updateMixCount() {
@@ -584,10 +605,120 @@ function updateMixCount() {
   if (x) x.textContent = selectedPieces().length + ' món';
 }
 
+// Thuật toán chia ô tự động KHÔNG ĐÈ NHAU, luôn có padding >= 3% và nằm trọn 100% trong Canvas
+function computeCanvasLayout(pieces) {
+  const PAD_X = 3;
+  const PAD_Y = 3.5;
+  const MARGIN_X = 3;
+  const MARGIN_Y = 4;
+
+  const head = pieces.filter(p => p.zone === 'HEAD');
+  const neck = pieces.filter(p => p.zone === 'NECK');
+  const upper = pieces.filter(p => p.zone === 'UPPER' || p.zone === 'DRESS');
+  const waist = pieces.filter(p => p.zone === 'WAIST');
+  const lower = pieces.filter(p => p.zone === 'LOWER');
+  const foot = pieces.filter(p => p.zone === 'FOOT');
+  const side = pieces.filter(p => p.zone === 'SIDE');
+
+  // Xây các hàng của cột trung tâm (Trục cơ thể từ đầu -> chân)
+  const centerRows = [];
+  if (head.length === 1) centerRows.push({ items: head, weight: 0.78 });
+  else if (head.length > 1) side.unshift(...head);
+
+  if (neck.length === 1 && !upper.length) centerRows.push({ items: neck, weight: 0.85 });
+  else if (neck.length) side.unshift(...neck);
+
+  if (upper.length) centerRows.push({ items: upper, weight: upper.some(p => p.zone === 'DRESS') ? 1.65 : 1.32 });
+
+  if (waist.length === 1) centerRows.push({ items: waist, weight: 0.72 });
+  else if (waist.length > 1) side.push(...waist);
+
+  if (lower.length) centerRows.push({ items: lower, weight: 1.38 });
+  if (foot.length) centerRows.push({ items: foot, weight: 0.82 });
+
+  // Chia đều các phụ kiện / túi sang 2 cột trái & phải
+  const leftRows = [];
+  const rightRows = [];
+  if (!centerRows.length) {
+    // Nếu chỉ chọn toàn phụ kiện/túi -> chia lưới đều ở chính giữa
+    const cols = side.length <= 2 ? 1 : 2;
+    for (let i = 0; i < side.length; i += cols) {
+      centerRows.push({ items: side.slice(i, i + cols), weight: 1 });
+    }
+  } else {
+    side.forEach((p, idx) => {
+      const row = { items: [p], weight: 1 };
+      if (idx % 2 === 0) leftRows.push(row);
+      else rightRows.push(row);
+    });
+  }
+
+  // Tính tọa độ X và bề rộng cho các cột hoạt động (luôn cách nhau PAD_X = 3%)
+  const activeCols = [];
+  const hasLeft = leftRows.length > 0;
+  const hasRight = rightRows.length > 0;
+
+  if (!hasLeft && !hasRight) {
+    activeCols.push({ x: 11, w: 78, rows: centerRows });
+  } else if (hasLeft && !hasRight) {
+    activeCols.push({ x: MARGIN_X, w: 26, rows: leftRows });
+    activeCols.push({ x: MARGIN_X + 26 + PAD_X, w: 100 - MARGIN_X * 2 - 26 - PAD_X, rows: centerRows });
+  } else {
+    const sideW = 22.5;
+    const centerW = 100 - MARGIN_X * 2 - sideW * 2 - PAD_X * 2;
+    activeCols.push({ x: MARGIN_X, w: sideW, rows: leftRows });
+    activeCols.push({ x: MARGIN_X + sideW + PAD_X, w: centerW, rows: centerRows });
+    activeCols.push({ x: MARGIN_X + sideW + PAD_X + centerW + PAD_X, w: sideW, rows: rightRows });
+  }
+
+  const placed = [];
+  for (const col of activeCols) {
+    const R = col.rows.length;
+    if (!R) continue;
+    const availH = 100 - MARGIN_Y * 2 - (R - 1) * PAD_Y;
+    const totalW = col.rows.reduce((sum, r) => sum + r.weight, 0);
+    const maxSingleH = R === 1 ? 66 : (R === 2 ? 43 : 999);
+
+    const rowHeights = col.rows.map(r => Math.min(maxSingleH, (availH * r.weight) / totalW));
+    const usedH = rowHeights.reduce((a, b) => a + b, 0) + (R - 1) * PAD_Y;
+    let curY = MARGIN_Y + Math.max(0, (100 - MARGIN_Y * 2 - usedH) / 2);
+
+    col.rows.forEach((row, rIdx) => {
+      const h = rowHeights[rIdx];
+      const K = row.items.length;
+      const itemW = (col.w - (K - 1) * PAD_X) / K;
+      row.items.forEach((piece, kIdx) => {
+        placed.push({
+          ...piece,
+          p: {
+            x: +(col.x + kIdx * (itemW + PAD_X)).toFixed(2),
+            y: +curY.toFixed(2),
+            w: +itemW.toFixed(2),
+            h: +h.toFixed(2)
+          }
+        });
+      });
+      curY += h + PAD_Y;
+    });
+  }
+
+  return placed;
+}
+
 function mixOutfit(silent = false) {
   const selected = selectedPieces();
   const canvas = $('mixCanvas');
   updateMixCount();
+
+  if (canvas && !canvas.dataset.dropBound) {
+    canvas.dataset.dropBound = '1';
+    canvas.ondragover = e => e.preventDefault();
+    canvas.ondrop = e => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text/plain');
+      if (id) toggleItemSelection(id, true);
+    };
+  }
 
   if (!selected.length) {
     canvas.innerHTML = '';
@@ -597,28 +728,22 @@ function mixOutfit(silent = false) {
   }
 
   canvas.classList.remove('empty');
-  const clothing = selected.filter(x => !['Phụ kiện', 'Túi xách', 'Giày dép'].includes(x.cat));
+  const active = computeCanvasLayout(selected);
 
-  let active = selected.map(({ cat, it }) => ({ cat, it, p: { ...POSITIONS[cat] } }));
-  if (selected.length === 1) {
-    active[0].p = { x: 19, y: 15, w: 62, h: 69, r: -2, z: 4 };
-  } else if (clothing.length === 1) {
-    const only = active.find(x => x.cat === clothing[0].cat);
-    if (only) only.p = { x: 17, y: 12, w: 64, h: 68, r: -2, z: 4 };
-  }
-
-  if (board['Váy liền']) {
-    active.filter(x => ['Áo', 'Quần', 'Chân váy'].includes(x.cat)).forEach((x, i) => {
-      x.p = { x: i ? 49 : 5, y: i ? 53 : 50, w: 33, h: 31, r: i ? 6 : -6, z: 6 + i };
-    });
-  }
-
-  canvas.innerHTML = active.map(({ cat, it, p }, i) => `
-    <figure class="mixpiece" style="left:${p.x}%;top:${p.y}%;width:${p.w}%;height:${p.h}%;z-index:${p.z};transform:rotate(${p.r}deg);animation-delay:${i * 65}ms">
+  canvas.innerHTML = active.map(({ it, p }, i) => `
+    <figure class="mixpiece" data-piece-id="${esc(it.id)}" style="left:${p.x}%;top:${p.y}%;width:${p.w}%;height:${p.h}%;animation-delay:${i * 45}ms">
+      <button type="button" class="mixpiece-remove" data-remove-id="${esc(it.id)}" title="Bỏ món này" aria-label="Bỏ món này"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       <img src="${it.photo}" alt="${esc(it.name)}" draggable="false">
       <figcaption title="${esc(it.name)}">${esc(it.name)}</figcaption>
     </figure>
   `).join('');
+
+  canvas.querySelectorAll('[data-remove-id]').forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      toggleItemSelection(btn.dataset.removeId);
+    };
+  });
 
   if (!silent) toast('Đã dàn set ' + selected.length + ' món lên Lookbook');
 }
@@ -1024,14 +1149,16 @@ $('submitItem').onclick = async () => {
 };
 
 $('saveLook').onclick = async () => {
-  const valid = Object.entries(board).filter(([s, id]) => items.some(i => i.id === id));
-  if (!valid.length) return toast('Thêm ít nhất một món vào outfit trước nha');
+  const validPieces = selectedPieces();
+  if (!validPieces.length) return toast('Thêm ít nhất một món vào outfit trước nha');
 
   const name = $('lookName').value.trim() || `Outfit ${new Date().toLocaleDateString('vi-VN')}`;
+  syncLegacyBoard();
   const look = {
     id: uuid(),
     name,
-    board: Object.fromEntries(valid),
+    items: validPieces.map(x => x.it.id),
+    board: { ...board },
     added: Date.now()
   };
 
@@ -1046,6 +1173,7 @@ $('saveLook').onclick = async () => {
 };
 
 $('clearBoard').onclick = () => {
+  selectedIds = [];
   board = {};
   $('lookName').value = '';
   $('aiNote')?.classList.add('hidden');
@@ -1203,7 +1331,220 @@ if ($('aiAutoTagBtn')) {
   };
 }
 
-// 11B. Tạo ảnh phối đồ AI qua MuseAI (Async polling < 500ms/request tránh timeout Vercel + chuẩn hóa hình dạng 2 giai đoạn từ ảnh gốc)
+// 11B. Ảnh Ma-nơ-canh gốc chuẩn (Canonical Base Mannequin 1024x1024) + Bảng ghép 4 vùng cơ thể (Anatomical Zone Boards)
+let cachedMannequinBaseUrl = '';
+
+function getBaseMannequinDataUrl() {
+  if (cachedMannequinBaseUrl) return cachedMannequinBaseUrl;
+  const c = document.createElement('canvas');
+  c.width = 1024;
+  c.height = 1024;
+  const ctx = c.getContext('2d');
+
+  // Phông studio kem ấm đồng nhất 100%
+  const bg = ctx.createRadialGradient(512, 420, 80, 512, 512, 680);
+  bg.addColorStop(0, '#F7F4EE');
+  bg.addColorStop(1, '#EAE4DA');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Bóng sàn studio mềm
+  const floorShadow = ctx.createRadialGradient(512, 935, 10, 512, 935, 175);
+  floorShadow.addColorStop(0, 'rgba(60, 48, 35, 0.18)');
+  floorShadow.addColorStop(1, 'rgba(60, 48, 35, 0)');
+  ctx.fillStyle = floorShadow;
+  ctx.beginPath();
+  ctx.ellipse(512, 935, 175, 24, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Trụ gỗ sồi & chân đế chữ thập thanh mảnh
+  const woodGrad = ctx.createLinearGradient(496, 0, 528, 0);
+  woodGrad.addColorStop(0, '#A5794C');
+  woodGrad.addColorStop(0.5, '#C89E6E');
+  woodGrad.addColorStop(1, '#8C6239');
+  ctx.fillStyle = woodGrad;
+  ctx.fillRect(502, 540, 20, 385);
+
+  // Chân đế gỗ 3 chạc
+  ctx.strokeStyle = '#9D7246';
+  ctx.lineWidth = 16;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(512, 895);
+  ctx.lineTo(410, 932);
+  ctx.moveTo(512, 895);
+  ctx.lineTo(614, 932);
+  ctx.moveTo(512, 885);
+  ctx.lineTo(512, 940);
+  ctx.stroke();
+
+  // Chóp cổ gỗ sồi tiện tròn
+  ctx.fillStyle = woodGrad;
+  ctx.beginPath();
+  ctx.roundRect(488, 128, 48, 38, 12);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(512, 126, 20, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Thân Ma-nơ-canh nữ bọc vải linen kem chuẩn tỉ lệ Haute Couture (vai 38 - eo thon 60 - hông 88)
+  const torsoGrad = ctx.createLinearGradient(375, 160, 650, 550);
+  torsoGrad.addColorStop(0, '#EFE7D8');
+  torsoGrad.addColorStop(0.42, '#E2D5C1');
+  torsoGrad.addColorStop(0.85, '#CBBAA1');
+  torsoGrad.addColorStop(1, '#B8A58B');
+
+  ctx.fillStyle = torsoGrad;
+  ctx.beginPath();
+  ctx.moveTo(486, 156); // Cổ trái
+  ctx.quadraticCurveTo(478, 182, 392, 198); // Cầu vai trái
+  ctx.quadraticCurveTo(372, 204, 376, 232); // Đỉnh vai trái
+  ctx.bezierCurveTo(385, 290, 412, 315, 438, 368); // Ngực xuống eo trái
+  ctx.bezierCurveTo(446, 392, 412, 438, 408, 488); // Eo mở ra hông trái
+  ctx.quadraticCurveTo(410, 536, 464, 544); // Đáy hông trái
+  ctx.lineTo(560, 544); // Đáy hông phải
+  ctx.quadraticCurveTo(614, 536, 616, 488); // Hông phải
+  ctx.bezierCurveTo(612, 438, 578, 392, 586, 368); // Eo phải
+  ctx.bezierCurveTo(612, 315, 639, 290, 648, 232); // Ngực lên đỉnh vai phải
+  ctx.quadraticCurveTo(652, 204, 632, 198); // Cầu vai phải
+  ctx.quadraticCurveTo(546, 182, 538, 156); // Cổ phải
+  ctx.closePath();
+  ctx.fill();
+
+  // Đường chỉ may công thái học đặc trưng của ma-nơ-canh thiết kế
+  ctx.strokeStyle = 'rgba(130, 110, 86, 0.32)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(512, 158);
+  ctx.lineTo(512, 544); // Đường trục giữa thân
+  ctx.moveTo(436, 202);
+  ctx.bezierCurveTo(448, 285, 462, 370, 452, 542); // Đường cắt cúp ngực trái
+  ctx.moveTo(588, 202);
+  ctx.bezierCurveTo(576, 285, 562, 370, 572, 542); // Đường cắt cúp ngực phải
+  ctx.moveTo(436, 374);
+  ctx.quadraticCurveTo(512, 384, 588, 374); // Đường đai eo chuẩn
+  ctx.stroke();
+
+  cachedMannequinBaseUrl = c.toDataURL('image/png');
+  return cachedMannequinBaseUrl;
+}
+
+async function loadCanvasSafeImage(src) {
+  if (!src) return null;
+  let dataSrc = src;
+  if (!src.startsWith('data:image/')) {
+    try {
+      const res = await callMuseApi({ action: 'proxy_img', url: src });
+      if (res?.dataUrl) dataSrc = res.dataUrl;
+    } catch (_) {}
+  }
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = dataSrc;
+  });
+}
+
+// Gom nhiều món (đặc biệt là nhiều Phụ kiện & Túi) vào 1 bảng 1024x1024 có gắn nhãn vùng đeo [#1 HEAD, #2 NECK, #3 WAIST...]
+async function buildLabeledGridBoard(pieceList, boardTitle) {
+  const c = document.createElement('canvas');
+  c.width = 1024;
+  c.height = 1024;
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = '#FAF8F5';
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  ctx.fillStyle = '#1A3323';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.fillText(boardTitle, 36, 44);
+
+  const imgs = await Promise.all(pieceList.map(p => loadCanvasSafeImage(p.it.photo)));
+  const N = pieceList.length;
+  const cols = N <= 1 ? 1 : (N <= 4 ? 2 : 3);
+  const rows = Math.ceil(N / cols);
+  const pad = 24;
+  const topY = 64;
+  const cellW = (1024 - pad * (cols + 1)) / cols;
+  const cellH = (1024 - topY - pad * (rows + 1)) / rows;
+
+  pieceList.forEach((p, idx) => {
+    const r = Math.floor(idx / cols);
+    const col = idx % cols;
+    const x = pad + col * (cellW + pad);
+    const y = topY + pad + r * (cellH + pad);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = 'rgba(26, 51, 35, 0.16)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x, y, cellW, cellH, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    const img = imgs[idx];
+    if (img) {
+      const boxW = cellW - 24;
+      const boxH = cellH - 58;
+      const scale = Math.min(boxW / img.width, boxH / img.height);
+      const drawW = img.width * scale;
+      const drawH = img.height * scale;
+      ctx.drawImage(img, x + (cellW - drawW) / 2, y + 12 + (boxH - drawH) / 2, drawW, drawH);
+    }
+
+    // In nhãn vùng đeo ngay trên ảnh để AI đọc và đặt đúng vị trí 100%
+    ctx.fillStyle = '#1A3323';
+    ctx.font = 'bold 18px sans-serif';
+    const label = `#${idx + 1} [${p.zone}] ${p.it.name}`.slice(0, 32);
+    ctx.fillText(label, x + 14, y + cellH - 16);
+  });
+
+  return c.toDataURL('image/png');
+}
+
+// Đóng gói tối đa 4 slot ảnh cho muse-image: Slot 1 = Ma-nơ-canh gốc chuẩn, Slot 2..4 = Đồ chính & Bảng Phụ kiện không giới hạn
+async function buildAiReferenceBoards(selected) {
+  const mannequinBase = getBaseMannequinDataUrl();
+  const mainGarments = selected.filter(s => ['UPPER', 'DRESS', 'LOWER', 'FOOT'].includes(s.zone));
+  const accessories = selected.filter(s => !['UPPER', 'DRESS', 'LOWER', 'FOOT'].includes(s.zone));
+
+  const refs = [mannequinBase];
+
+  if (selected.length <= 3) {
+    // Nếu tổng <= 3 món: gửi thẳng Ma-nơ-canh gốc + từng ảnh gốc
+    for (const s of selected) {
+      if (s.it.photo) refs.push(s.it.photo);
+    }
+    return refs;
+  }
+
+  // Nếu có nhiều món / nhiều phụ kiện (> 3 món): chia thành các Bảng Vùng 1024x1024 để không bị cắt mất món nào
+  const upperGarments = mainGarments.filter(s => s.zone === 'UPPER' || s.zone === 'DRESS');
+  const lowerGarments = mainGarments.filter(s => s.zone === 'LOWER' || s.zone === 'FOOT');
+
+  if (upperGarments.length === 1) {
+    refs.push(upperGarments[0].it.photo);
+  } else if (upperGarments.length > 1) {
+    refs.push(await buildLabeledGridBoard(upperGarments, 'UPPER BODY & LAYERING GARMENTS'));
+  }
+
+  if (lowerGarments.length === 1) {
+    refs.push(lowerGarments[0].it.photo);
+  } else if (lowerGarments.length > 1) {
+    refs.push(await buildLabeledGridBoard(lowerGarments, 'LOWER BODY & FOOTWEAR'));
+  }
+
+  if (accessories.length === 1 && refs.length < 4) {
+    refs.push(accessories[0].it.photo);
+  } else if (accessories.length >= 1) {
+    refs.push(await buildLabeledGridBoard(accessories, 'ACCESSORIES & BAGS (PLACE BY [ZONE] TAG)'));
+  }
+
+  return refs.slice(0, 4);
+}
+
 if ($('aiGenerateBtn')) {
   $('aiGenerateBtn').onclick = async () => {
     const selected = selectedPieces();
@@ -1216,29 +1557,42 @@ if ($('aiGenerateBtn')) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
     box.classList.remove('hidden');
-    stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Đang chuẩn hóa hình dạng đồ từ ảnh gốc & dựng ảnh...';
+    stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Đang đóng gói ảnh Ma-nơ-canh gốc & bảng phụ kiện...';
 
     try {
-      const refImages = selected.map(s => s.it.photo).filter(Boolean).slice(0, 4);
+      const refImages = await buildAiReferenceBoards(selected);
+
+      const zonePlacementGuide = {
+        HEAD: 'Place on the top/head position above the mannequin neck finial',
+        NECK: 'Drape or tie neatly around the mannequin neck/collar area',
+        UPPER: 'Dress onto the mannequin upper torso/shoulders',
+        DRESS: 'Dress full-length onto the mannequin torso draping down over hips',
+        WAIST: 'Fasten securely around the narrowest part of the mannequin waist OVER the top/dress',
+        LOWER: 'Fit onto the mannequin waist and hips hanging down cleanly over the wooden stand',
+        FOOT: 'Place neatly at the base of the wooden stand underneath the hemline',
+        SIDE: 'Display cleanly beside the mannequin hip/shoulder as a coordinated boutique styling prop'
+      };
 
       const normalizedBlock = selected
-        .map((s, idx) => `- Reference Image #${idx + 1} (${s.cat}): "${s.it.name}"${s.it.color ? `, exact color: ${s.it.color}` : ''}${s.it.note ? `, cut/detail: ${s.it.note}` : ''}. Extract ONLY this garment's exact outer contour, neckline/collar, sleeve/leg width, length ratio, fabric texture, and surface details from Reference Image #${idx + 1}.`)
+        .map((s, idx) => `- Item #${idx + 1} [${s.zone} — ${s.cat}]: "${s.it.name}"${s.it.color ? `, exact color: ${s.it.color}` : ''}${s.it.note ? `, detail: ${s.it.note}` : ''}. Placement: ${zonePlacementGuide[s.zone] || 'On mannequin'}.`)
         .join('\n');
 
-      const prompt = `Execute a strict two-stage garment shape normalization and outfit assembly from the attached reference image(s):
+      const prompt = `Use Reference Image #1 as the EXACT base mannequin (preserve its exact beige-linen headless torso proportions, slim light-oak stand, front camera angle, and warm cream studio backdrop).
 
-STAGE 1 — 1:1 GARMENT SHAPE NORMALIZATION FROM REFERENCE IMAGES:
-For each attached reference photo, isolate ONLY the clothing item itself (ignore any person, body, hands, hangers, props, or background). Normalize each garment into its true, undistorted 3D silhouette while strictly locking its exact contour, proportions, cut, seams, ruffles/pleats/ties, fabric weave, and exact color shade:
+Execute a strict two-stage garment shape normalization and multi-accessory assembly from the remaining reference images/boards:
+
+STAGE 1 — 1:1 GARMENT & ACCESSORY SHAPE NORMALIZATION:
+Extract every listed item (${selected.length} items total) from the reference images/labeled grids. Strip away any human body, hands, hangers, or background from the source photos, locking each item's exact 1:1 silhouette, neckline, sleeve/leg cut, fabric texture, and color shade:
 ${normalizedBlock}
 
-STAGE 2 — COMPOSITE ASSEMBLY ON MANNEQUIN:
-Dress ONLY the normalized garments from Stage 1 together onto a single minimalist headless boutique dress-form mannequin (smooth beige linen torso on a slim light-oak stand; NO human, NO face, NO head, NO hair, NO hands, NO skin).
-- Keep 100% fidelity to each garment's original shape, cut, wash, and details from the reference photos.
-- Do NOT invent extra layers, belts, bags, hats, or accessories.
-- Full-length front view centered in frame, clean off-white seamless studio backdrop, crisp commercial product lighting.`;
+STAGE 2 — COMPLETE MULTI-ACCESSORY ASSEMBLY ON THE BASE MANNEQUIN:
+Dress and position ALL ${selected.length} normalized items from Stage 1 onto/around the exact base mannequin from Reference Image #1 following their [ZONE] tags:
+- Every single listed item and accessory (${selected.map(s => s.it.name).join(', ')}) MUST be clearly visible in its designated anatomical zone.
+- Keep 100% fidelity to each garment's original shape, cut, wash, and details.
+- NO human, NO face, NO head, NO hair, NO hands, NO skin, NO unrequested items.`;
 
       const dataUrl = await callMuseImage(prompt, refImages, elapsed => {
-        stage.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Đang chuẩn hóa hình dạng & ghép đồ (${elapsed}s)...`;
+        stage.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Đang chuẩn hóa ${selected.length} món & ghép lên Ma-nơ-canh gốc (${elapsed}s)...`;
       });
       lastAiDataUrl = dataUrl;
       const imgEl = document.createElement('img');
@@ -1281,7 +1635,8 @@ if ($('saveAiToLooks')) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>Đang lưu...</span>';
     try {
-      const valid = Object.entries(board).filter(([s, id]) => items.some(i => i.id === id));
+      const validPieces = selectedPieces();
+      syncLegacyBoard();
       const name = $('lookName')?.value.trim() || `Outfit ${new Date().toLocaleDateString('vi-VN')}`;
 
       let aiPhotoUrl = lastAiDataUrl;
@@ -1297,7 +1652,8 @@ if ($('saveAiToLooks')) {
       const look = {
         id: uuid(),
         name,
-        board: Object.fromEntries(valid),
+        items: validPieces.map(x => x.it.id),
+        board: { ...board },
         aiPhoto: aiPhotoUrl,
         added: Date.now()
       };

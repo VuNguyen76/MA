@@ -68,6 +68,11 @@ export default async function handler(req, res) {
       return res.status(200).json({ text });
     }
 
+    if (body.action === 'proxy_img') {
+      const dataUrl = await toDataUrlIfRemote(body.url);
+      return res.status(200).json({ dataUrl });
+    }
+
     // Bắt đầu tạo ảnh bất đồng bộ (async: true -> trả về taskId trong < 500ms, tránh timeout Vercel)
     if (body.action === 'image_start') {
       const rawImages = Array.isArray(body.images) ? body.images.filter(Boolean).slice(0, 4) : [];

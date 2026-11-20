@@ -1779,3 +1779,64 @@ button:active {
   border-color: var(--sage-muted);
   background: var(--sage-light);
 }
+
+/* Collision-free padded Lookbook Canvas pieces */
+.mixpiece {
+  padding: 6px 6px 22px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 4px 14px -4px rgba(26, 51, 35, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: left 0.35s var(--ease), top 0.35s var(--ease), width 0.35s var(--ease), height 0.35s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.mixpiece:hover {
+  box-shadow: 0 8px 20px -6px rgba(26, 51, 35, 0.14);
+  border-color: var(--hairline-mid);
+}
+
+.mixpiece img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.mixpiece-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline-mid);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--sage-deep);
+  font-size: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease), background 0.2s, color 0.2s;
+  z-index: 3;
+}
+
+.mixpiece:hover .mixpiece-remove {
+  opacity: 1;
+}
+
+.mixpiece-remove:hover {
+  background: #A9382E;
+  border-color: #A9382E;
+  color: #FFFFFF;
+}
+
+@media (hover: none) {
+  .mixpiece-remove {
+    opacity: 0.9;
+  }
+}
