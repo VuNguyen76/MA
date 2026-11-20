@@ -605,104 +605,133 @@ function updateMixCount() {
   if (x) x.textContent = selectedPieces().length + ' món';
 }
 
-// Thuật toán chia ô tự động KHÔNG ĐÈ NHAU, luôn có padding >= 3% và nằm trọn 100% trong Canvas
+// Bố cục Flat-lay tự nhiên như bản cũ + Vật lý tự đẩy nhau (Force-Directed Repulsion) để không bao giờ đè lên nhau và luôn nằm trọn trong Canvas
 function computeCanvasLayout(pieces) {
-  const PAD_X = 3;
-  const PAD_Y = 3.5;
-  const MARGIN_X = 3;
-  const MARGIN_Y = 4;
+  const N = pieces.length;
+  if (N === 1) {
+    return [{ ...pieces[0], p: { x: 19, y: 14, w: 62, h: 70, r: -2, z: 4 } }];
+  }
 
-  const head = pieces.filter(p => p.zone === 'HEAD');
-  const neck = pieces.filter(p => p.zone === 'NECK');
-  const upper = pieces.filter(p => p.zone === 'UPPER' || p.zone === 'DRESS');
-  const waist = pieces.filter(p => p.zone === 'WAIST');
-  const lower = pieces.filter(p => p.zone === 'LOWER');
-  const foot = pieces.filter(p => p.zone === 'FOOT');
-  const side = pieces.filter(p => p.zone === 'SIDE');
+  // Các điểm neo flat-lay tự nhiên quanh bộ đồ chính cho nhiều phụ kiện
+  const accAnchors = [
+    { x: 66, y: 6, w: 28, h: 24, r: 7, z: 8 },
+    { x: 4, y: 8, w: 28, h: 24, r: -6, z: 8 },
+    { x: 66, y: 66, w: 28, h: 24, r: -5, z: 8 },
+    { x: 5, y: 38, w: 26, h: 24, r: 5, z: 8 },
+    { x: 68, y: 36, w: 26, h: 24, r: 8, z: 8 },
+    { x: 36, y: 2, w: 26, h: 20, r: -3, z: 9 }
+  ];
 
-  // Xây các hàng của cột trung tâm (Trục cơ thể từ đầu -> chân)
-  const centerRows = [];
-  if (head.length === 1) centerRows.push({ items: head, weight: 0.78 });
-  else if (head.length > 1) side.unshift(...head);
+  // Co tỷ lệ nhẹ khi chọn nhiều món để đảm bảo tổng diện tích luôn vừa thoáng trong Canvas
+  const scale = N <= 2 ? 0.96 : (N === 3 ? 0.86 : (N === 4 ? 0.78 : Math.max(0.56, 1.48 / Math.sqrt(N))));
 
-  if (neck.length === 1 && !upper.length) centerRows.push({ items: neck, weight: 0.85 });
-  else if (neck.length) side.unshift(...neck);
+  let accIdx = 0;
+  let topIdx = 0;
+  const nodes = pieces.map((piece, idx) => {
+    let base = { ...(POSITIONS[piece.cat] || POSITIONS['Phụ kiện']) };
 
-  if (upper.length) centerRows.push({ items: upper, weight: upper.some(p => p.zone === 'DRESS') ? 1.65 : 1.32 });
-
-  if (waist.length === 1) centerRows.push({ items: waist, weight: 0.72 });
-  else if (waist.length > 1) side.push(...waist);
-
-  if (lower.length) centerRows.push({ items: lower, weight: 1.38 });
-  if (foot.length) centerRows.push({ items: foot, weight: 0.82 });
-
-  // Chia đều các phụ kiện / túi sang 2 cột trái & phải
-  const leftRows = [];
-  const rightRows = [];
-  if (!centerRows.length) {
-    // Nếu chỉ chọn toàn phụ kiện/túi -> chia lưới đều ở chính giữa
-    const cols = side.length <= 2 ? 1 : 2;
-    for (let i = 0; i < side.length; i += cols) {
-      centerRows.push({ items: side.slice(i, i + cols), weight: 1 });
+    if (piece.cat === 'Áo') {
+      if (topIdx === 1) base = { x: 6, y: 10, w: 42, h: 34, r: -7, z: 5 };
+      topIdx++;
+    } else if (piece.cat === 'Phụ kiện') {
+      base = { ...accAnchors[accIdx % accAnchors.length] };
+      accIdx++;
+    } else if (piece.cat === 'Túi xách') {
+      base = { x: 66, y: 34, w: 29, h: 28, r: 8, z: 7 };
     }
-  } else {
-    side.forEach((p, idx) => {
-      const row = { items: [p], weight: 1 };
-      if (idx % 2 === 0) leftRows.push(row);
-      else rightRows.push(row);
-    });
-  }
 
-  // Tính tọa độ X và bề rộng cho các cột hoạt động (luôn cách nhau PAD_X = 3%)
-  const activeCols = [];
-  const hasLeft = leftRows.length > 0;
-  const hasRight = rightRows.length > 0;
+    const w = base.w * scale;
+    const h = base.h * scale;
+    const cx = base.x + base.w / 2;
+    const cy = base.y + base.h / 2;
 
-  if (!hasLeft && !hasRight) {
-    activeCols.push({ x: 11, w: 78, rows: centerRows });
-  } else if (hasLeft && !hasRight) {
-    activeCols.push({ x: MARGIN_X, w: 26, rows: leftRows });
-    activeCols.push({ x: MARGIN_X + 26 + PAD_X, w: 100 - MARGIN_X * 2 - 26 - PAD_X, rows: centerRows });
-  } else {
-    const sideW = 22.5;
-    const centerW = 100 - MARGIN_X * 2 - sideW * 2 - PAD_X * 2;
-    activeCols.push({ x: MARGIN_X, w: sideW, rows: leftRows });
-    activeCols.push({ x: MARGIN_X + sideW + PAD_X, w: centerW, rows: centerRows });
-    activeCols.push({ x: MARGIN_X + sideW + PAD_X + centerW + PAD_X, w: sideW, rows: rightRows });
-  }
+    return {
+      ...piece,
+      cx,
+      cy,
+      anchorX: cx,
+      anchorY: cy,
+      w,
+      h,
+      r: base.r,
+      z: base.z || (idx + 3)
+    };
+  });
 
-  const placed = [];
-  for (const col of activeCols) {
-    const R = col.rows.length;
-    if (!R) continue;
-    const availH = 100 - MARGIN_Y * 2 - (R - 1) * PAD_Y;
-    const totalW = col.rows.reduce((sum, r) => sum + r.weight, 0);
-    const maxSingleH = R === 1 ? 66 : (R === 2 ? 43 : 999);
+  // Mô phỏng lực đẩy đàn hồi 2D (tự đẩy nhau ra khi chạm vùng padding PAD, đồng thời giữ dáng tự nhiên quanh điểm neo)
+  const PAD = 3.2;
+  const MIN_X = 3;
+  const MAX_X = 97;
+  const MIN_Y = 4;
+  const MAX_Y = 94;
 
-    const rowHeights = col.rows.map(r => Math.min(maxSingleH, (availH * r.weight) / totalW));
-    const usedH = rowHeights.reduce((a, b) => a + b, 0) + (R - 1) * PAD_Y;
-    let curY = MARGIN_Y + Math.max(0, (100 - MARGIN_Y * 2 - usedH) / 2);
+  for (let iter = 0; iter < 90; iter++) {
+    let hadOverlap = false;
 
-    col.rows.forEach((row, rIdx) => {
-      const h = rowHeights[rIdx];
-      const K = row.items.length;
-      const itemW = (col.w - (K - 1) * PAD_X) / K;
-      row.items.forEach((piece, kIdx) => {
-        placed.push({
-          ...piece,
-          p: {
-            x: +(col.x + kIdx * (itemW + PAD_X)).toFixed(2),
-            y: +curY.toFixed(2),
-            w: +itemW.toFixed(2),
-            h: +h.toFixed(2)
+    for (let i = 0; i < N; i++) {
+      for (let j = i + 1; j < N; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        const reqDx = (a.w + b.w) / 2 + PAD;
+        const reqDy = (a.h + b.h) / 2 + PAD;
+        let dx = b.cx - a.cx;
+        let dy = b.cy - a.cy;
+
+        if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) {
+          dx = (j - i) * 1.5;
+          dy = 1.5;
+        }
+
+        const ox = reqDx - Math.abs(dx);
+        const oy = reqDy - Math.abs(dy);
+
+        if (ox > 0 && oy > 0) {
+          hadOverlap = true;
+          // Đẩy theo trục có độ chồng lấn ít hơn để tách nhau tự nhiên nhất
+          if (ox < oy) {
+            const push = (ox / 2 + 0.15) * (dx >= 0 ? 1 : -1);
+            a.cx -= push;
+            b.cx += push;
+          } else {
+            const push = (oy / 2 + 0.15) * (dy >= 0 ? 1 : -1);
+            a.cy -= push;
+            b.cy += push;
           }
-        });
-      });
-      curY += h + PAD_Y;
-    });
+        }
+      }
+    }
+
+    // Lực hút nhẹ về vị trí tự nhiên khi không bị chèn & khóa biên nằm gọn trong Canvas
+    const pull = hadOverlap ? 0.02 : 0.08;
+    for (const n of nodes) {
+      n.cx += (n.anchorX - n.cx) * pull;
+      n.cy += (n.anchorY - n.cy) * pull;
+      n.cx = Math.max(MIN_X + n.w / 2, Math.min(MAX_X - n.w / 2, n.cx));
+      n.cy = Math.max(MIN_Y + n.h / 2, Math.min(MAX_Y - n.h / 2, n.cy));
+    }
+
+    // Nếu sau khi kẹp biên vẫn còn chật (nhiều món), thu nhỏ nhẹ 1.5% để luôn đủ chỗ thở
+    if (hadOverlap && iter > 35 && iter % 10 === 0) {
+      for (const n of nodes) {
+        n.w *= 0.96;
+        n.h *= 0.96;
+      }
+    }
   }
 
-  return placed;
+  return nodes.map(n => ({
+    cat: n.cat,
+    zone: n.zone,
+    it: n.it,
+    p: {
+      x: +(n.cx - n.w / 2).toFixed(2),
+      y: +(n.cy - n.h / 2).toFixed(2),
+      w: +n.w.toFixed(2),
+      h: +n.h.toFixed(2),
+      r: n.r,
+      z: n.z
+    }
+  }));
 }
 
 function mixOutfit(silent = false) {
@@ -731,7 +760,7 @@ function mixOutfit(silent = false) {
   const active = computeCanvasLayout(selected);
 
   canvas.innerHTML = active.map(({ it, p }, i) => `
-    <figure class="mixpiece" data-piece-id="${esc(it.id)}" style="left:${p.x}%;top:${p.y}%;width:${p.w}%;height:${p.h}%;animation-delay:${i * 45}ms">
+    <figure class="mixpiece" data-piece-id="${esc(it.id)}" style="left:${p.x}%;top:${p.y}%;width:${p.w}%;height:${p.h}%;z-index:${p.z};transform:rotate(${p.r}deg);animation-delay:${i * 55}ms">
       <button type="button" class="mixpiece-remove" data-remove-id="${esc(it.id)}" title="Bỏ món này" aria-label="Bỏ món này"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       <img src="${it.photo}" alt="${esc(it.name)}" draggable="false">
       <figcaption title="${esc(it.name)}">${esc(it.name)}</figcaption>

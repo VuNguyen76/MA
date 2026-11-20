@@ -1780,35 +1780,15 @@ button:active {
   background: var(--sage-light);
 }
 
-/* Collision-free padded Lookbook Canvas pieces */
+/* Natural flat-lay Lookbook Canvas pieces (giữ nguyên phong cách tự nhiên bản cũ, không đóng khung) */
 .mixpiece {
-  padding: 6px 6px 22px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid var(--hairline);
-  box-shadow: 0 4px 14px -4px rgba(26, 51, 35, 0.06);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: left 0.35s var(--ease), top 0.35s var(--ease), width 0.35s var(--ease), height 0.35s var(--ease), box-shadow 0.25s var(--ease);
-}
-
-.mixpiece:hover {
-  box-shadow: 0 8px 20px -6px rgba(26, 51, 35, 0.14);
-  border-color: var(--hairline-mid);
-}
-
-.mixpiece img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  transition: left 0.45s var(--ease), top 0.45s var(--ease), width 0.45s var(--ease), height 0.45s var(--ease), transform 0.45s var(--ease);
 }
 
 .mixpiece-remove {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 2px;
+  right: 2px;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -1822,7 +1802,7 @@ button:active {
   justify-content: center;
   opacity: 0;
   transition: opacity 0.2s var(--ease), background 0.2s, color 0.2s;
-  z-index: 3;
+  z-index: 10;
 }
 
 .mixpiece:hover .mixpiece-remove {
@@ -1837,6 +1817,6 @@ button:active {
 
 @media (hover: none) {
   .mixpiece-remove {
-    opacity: 0.9;
+    opacity: 0.85;
   }
 }
