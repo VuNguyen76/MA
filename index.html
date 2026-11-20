@@ -73,9 +73,20 @@
         <div class="bezel-core section-inner">
           <div class="section-toolbar">
             <h2 class="section-heading">Tủ đồ</h2>
-            <div class="search-box">
-              <i class="fa-solid fa-magnifying-glass search-ico" aria-hidden="true"></i>
-              <input id="search" class="search-field" placeholder="Tìm kiếm trang phục..." />
+            <div class="toolbar-actions">
+              <select id="seasonFilter" class="filter-select" aria-label="Lọc theo dịp mặc">
+                <option value="">Mọi dịp</option>
+                <option>Đi làm</option>
+                <option>Đi chơi dạo phố</option>
+                <option>Dự tiệc</option>
+                <option>Du lịch</option>
+                <option>Đi tập</option>
+                <option>Mặc ở nhà</option>
+              </select>
+              <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-ico" aria-hidden="true"></i>
+                <input id="search" class="search-field" placeholder="Tìm kiếm trang phục..." />
+              </div>
             </div>
           </div>
 

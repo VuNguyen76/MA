@@ -347,10 +347,12 @@ function renderFilters() {
 
 function renderCloset() {
   const q = $('search').value.trim().toLocaleLowerCase();
+  const seasonVal = $('seasonFilter')?.value || '';
   const shown = items.filter(i => {
     const matchCat = activeFilter === 'Tất cả' || i.cat === activeFilter;
+    const matchSeason = !seasonVal || i.season === seasonVal;
     const matchSearch = [i.name, i.color, i.note, i.season].join(' ').toLocaleLowerCase().includes(q);
-    return matchCat && matchSearch;
+    return matchCat && matchSeason && matchSearch;
   });
 
   const closetEl = $('closet');
@@ -1053,6 +1055,7 @@ $('clearBoard').onclick = () => {
 };
 
 $('search').oninput = renderCloset;
+if ($('seasonFilter')) $('seasonFilter').onchange = renderCloset;
 $('uploadBtn').onclick = () => openModal();
 $('closeDialog').onclick = closeModal;
 $('cancelDialog').onclick = closeModal;
