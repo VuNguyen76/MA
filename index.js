@@ -612,32 +612,41 @@ function computeCanvasLayout(pieces) {
     return [{ ...pieces[0], p: { x: 19, y: 14, w: 62, h: 70, r: -2, z: 4 } }];
   }
 
-  // Các điểm neo flat-lay tự nhiên quanh bộ đồ chính cho nhiều phụ kiện
+  // Các điểm neo flat-lay tự nhiên quanh bộ đồ chính (trên-phải, trên-trái, dưới-phải, giữa-trái, giữa-phải, dưới-trái)
   const accAnchors = [
-    { x: 66, y: 6, w: 28, h: 24, r: 7, z: 8 },
-    { x: 4, y: 8, w: 28, h: 24, r: -6, z: 8 },
-    { x: 66, y: 66, w: 28, h: 24, r: -5, z: 8 },
-    { x: 5, y: 38, w: 26, h: 24, r: 5, z: 8 },
-    { x: 68, y: 36, w: 26, h: 24, r: 8, z: 8 },
-    { x: 36, y: 2, w: 26, h: 20, r: -3, z: 9 }
+    { x: 67, y: 7, w: 29, h: 25, r: 7, z: 8 },
+    { x: 3, y: 8, w: 29, h: 25, r: -6, z: 8 },
+    { x: 67, y: 67, w: 29, h: 25, r: -5, z: 8 },
+    { x: 3, y: 38, w: 28, h: 24, r: 5, z: 8 },
+    { x: 68, y: 37, w: 28, h: 24, r: 8, z: 8 },
+    { x: 3, y: 68, w: 28, h: 24, r: -8, z: 9 }
   ];
 
-  // Co tỷ lệ nhẹ khi chọn nhiều món để đảm bảo tổng diện tích luôn vừa thoáng trong Canvas
-  const scale = N <= 2 ? 0.96 : (N === 3 ? 0.86 : (N === 4 ? 0.78 : Math.max(0.56, 1.48 / Math.sqrt(N))));
+  // Giữ kích thước lớn tự nhiên như bản cũ
+  const scale = N <= 4 ? 1 : (N === 5 ? 0.94 : Math.max(0.80, 2.0 / Math.sqrt(N)));
 
   let accIdx = 0;
   let topIdx = 0;
+  const hasTop = pieces.some(p => p.cat === 'Áo');
   const nodes = pieces.map((piece, idx) => {
     let base = { ...(POSITIONS[piece.cat] || POSITIONS['Phụ kiện']) };
 
     if (piece.cat === 'Áo') {
-      if (topIdx === 1) base = { x: 6, y: 10, w: 42, h: 34, r: -7, z: 5 };
+      base = topIdx === 0
+        ? { x: 27, y: 7, w: 45, h: 36, r: -3, z: 4 }
+        : { x: 4, y: 9, w: 38, h: 32, r: -7, z: 5 };
       topIdx++;
+    } else if (piece.cat === 'Áo khoác') {
+      base = hasTop
+        ? { x: 4, y: 36, w: 38, h: 35, r: -6, z: 5 }
+        : { x: 23, y: 8, w: 48, h: 40, r: -6, z: 5 };
+    } else if (piece.cat === 'Quần' || piece.cat === 'Chân váy') {
+      base = { x: 28, y: 48, w: 44, h: 44, r: 3, z: 3 };
     } else if (piece.cat === 'Phụ kiện') {
       base = { ...accAnchors[accIdx % accAnchors.length] };
       accIdx++;
     } else if (piece.cat === 'Túi xách') {
-      base = { x: 66, y: 34, w: 29, h: 28, r: 8, z: 7 };
+      base = { x: 66, y: 36, w: 29, h: 27, r: 8, z: 7 };
     }
 
     const w = base.w * scale;
@@ -658,15 +667,15 @@ function computeCanvasLayout(pieces) {
     };
   });
 
-  // Mô phỏng lực đẩy đàn hồi 2D (tự đẩy nhau ra khi chạm vùng padding PAD, đồng thời giữ dáng tự nhiên quanh điểm neo)
-  const PAD = 3.2;
-  const MIN_X = 3;
-  const MAX_X = 97;
-  const MIN_Y = 4;
-  const MAX_Y = 94;
+  // Lực đẩy đàn hồi 2D: không cho đè lên nhau, luôn có padding và nằm trọn trong Canvas
+  const PAD = 2.0;
+  const MIN_X = 2;
+  const MAX_X = 98;
+  const MIN_Y = 7;
+  const MAX_Y = 96;
 
   for (let iter = 0; iter < 90; iter++) {
-    let hadOverlap = false;
+    let maxOverlap = 0;
 
     for (let i = 0; i < N; i++) {
       for (let j = i + 1; j < N; j++) {
@@ -686,35 +695,43 @@ function computeCanvasLayout(pieces) {
         const oy = reqDy - Math.abs(dy);
 
         if (ox > 0 && oy > 0) {
-          hadOverlap = true;
-          // Đẩy theo trục có độ chồng lấn ít hơn để tách nhau tự nhiên nhất
+          maxOverlap = Math.max(maxOverlap, Math.min(ox, oy));
+          const sx = dx >= 0 ? 1 : -1;
+          const sy = dy >= 0 ? 1 : -1;
           if (ox < oy) {
-            const push = (ox / 2 + 0.15) * (dx >= 0 ? 1 : -1);
-            a.cx -= push;
-            b.cx += push;
+            const push = ox / 2 + 0.15;
+            a.cx -= push * sx;
+            b.cx += push * sx;
+            // Đẩy nhẹ trục phụ để thoát kẹt góc tường
+            a.cy -= 0.25 * sy;
+            b.cy += 0.25 * sy;
           } else {
-            const push = (oy / 2 + 0.15) * (dy >= 0 ? 1 : -1);
-            a.cy -= push;
-            b.cy += push;
+            const push = oy / 2 + 0.15;
+            a.cy -= push * sy;
+            b.cy += push * sy;
+            a.cx -= 0.25 * sx;
+            b.cx += 0.25 * sx;
           }
         }
       }
     }
 
-    // Lực hút nhẹ về vị trí tự nhiên khi không bị chèn & khóa biên nằm gọn trong Canvas
-    const pull = hadOverlap ? 0.02 : 0.08;
+    // Chỉ kéo nhẹ về điểm neo ở 25 vòng đầu, sau đó ưu tiên triệt tiêu va chạm 100%
+    const pull = iter < 25 ? 0.04 : 0;
     for (const n of nodes) {
-      n.cx += (n.anchorX - n.cx) * pull;
-      n.cy += (n.anchorY - n.cy) * pull;
+      if (pull > 0) {
+        n.cx += (n.anchorX - n.cx) * pull;
+        n.cy += (n.anchorY - n.cy) * pull;
+      }
       n.cx = Math.max(MIN_X + n.w / 2, Math.min(MAX_X - n.w / 2, n.cx));
       n.cy = Math.max(MIN_Y + n.h / 2, Math.min(MAX_Y - n.h / 2, n.cy));
     }
 
-    // Nếu sau khi kẹp biên vẫn còn chật (nhiều món), thu nhỏ nhẹ 1.5% để luôn đủ chỗ thở
-    if (hadOverlap && iter > 35 && iter % 10 === 0) {
+    // Chỉ thu nhẹ 1.5% khi thật sự còn 2 món đang chạm nhau mà hết chỗ trống
+    if (iter >= 20 && iter % 8 === 0 && maxOverlap > 0.4) {
       for (const n of nodes) {
-        n.w *= 0.96;
-        n.h *= 0.96;
+        n.w = Math.max(18, n.w * 0.982);
+        n.h = Math.max(16, n.h * 0.982);
       }
     }
   }
