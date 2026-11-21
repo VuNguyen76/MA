@@ -1,0 +1,14 @@
+name: Keep Hugging Face Space Awake
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping muse2api-gw healthz
+        run: |
+          curl -sf --max-time 20 https://anhdagia0706-muse2api-gw.hf.space/healthz || echo "Wake-up ping sent"
