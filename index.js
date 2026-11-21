@@ -104,8 +104,25 @@ async function shrink(f) {
 }
 
 // =============================================================================
-// 4. GOOGLE DRIVE DIRECT UPLOAD QUA GOOGLE APPS SCRIPT WEB APP
+// 4. CLOUDFLARE R2 DIRECT UPLOAD (KHÔNG FALLBACK GOOGLE DRIVE)
 // =============================================================================
+async function uploadToR2(base64Data, fileName, folder = 'maianh-closet/items') {
+  const response = await fetch('/api/r2-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ base64Data, fileName, folder })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.url) {
+    throw new Error(data.error || `Lỗi R2 HTTP ${response.status}`);
+  }
+  return { id: data.id, url: data.url };
+}
+
+async function uploadImageToCloud(base64Data, fileName, folder = 'maianh-closet/items') {
+  return await uploadToR2(base64Data, fileName, folder);
+}
+
 async function uploadToAppsScript(base64Data, fileName) {
   if (!appsScriptUrl) throw new Error('Chưa thiết lập đường dẫn Google Apps Script');
 
@@ -1119,14 +1136,14 @@ $('submitItem').onclick = async () => {
         let finalPhoto = photos[0].photo;
         let driveFileId = old.driveFileId || null;
 
-        if (appsScriptUrl && finalPhoto.startsWith('data:image/')) {
-          toast('Đang tải ảnh cập nhật lên Drive...');
+        if (finalPhoto.startsWith('data:image/')) {
+          toast('Đang tải ảnh cập nhật lên Cloudflare R2...');
           try {
-            const driveRes = await uploadToAppsScript(finalPhoto, `${name || old.name || 'item'}-${Date.now()}.png`);
-            finalPhoto = driveRes.url;
-            driveFileId = driveRes.id;
+            const cloudRes = await uploadImageToCloud(finalPhoto, `${name || old.name || 'item'}-${Date.now()}.png`, 'maianh-closet/items');
+            finalPhoto = cloudRes.url;
+            driveFileId = cloudRes.id;
           } catch (uploadErr) {
-            console.warn('Lỗi tải Drive, giữ ảnh cục bộ:', uploadErr.message);
+            console.warn('Lỗi tải ảnh lên cloud, giữ ảnh cục bộ:', uploadErr.message);
           }
         }
 
@@ -1155,14 +1172,14 @@ $('submitItem').onclick = async () => {
         let finalPhoto = p.photo;
         let driveFileId = null;
 
-        if (appsScriptUrl && p.photo.startsWith('data:image/')) {
-          toast(`Đang lưu ảnh ${j + 1}/${photos.length} lên Drive...`);
+        if (p.photo.startsWith('data:image/')) {
+          toast(`Đang lưu ảnh ${j + 1}/${photos.length} lên Cloudflare R2...`);
           try {
-            const driveRes = await uploadToAppsScript(p.photo, `${name || cat}-${Date.now()}-${j}.png`);
-            finalPhoto = driveRes.url;
-            driveFileId = driveRes.id;
+            const cloudRes = await uploadImageToCloud(p.photo, `${name || cat}-${Date.now()}-${j}.png`, 'maianh-closet/items');
+            finalPhoto = cloudRes.url;
+            driveFileId = cloudRes.id;
           } catch (uploadErr) {
-            console.warn('Lỗi tải Drive, lưu cục bộ:', uploadErr.message);
+            console.warn('Lỗi tải ảnh lên cloud, lưu cục bộ:', uploadErr.message);
           }
         }
 
@@ -1686,12 +1703,12 @@ if ($('saveAiToLooks')) {
       const name = $('lookName')?.value.trim() || `Outfit ${new Date().toLocaleDateString('vi-VN')}`;
 
       let aiPhotoUrl = lastAiDataUrl;
-      if (appsScriptUrl && lastAiDataUrl.startsWith('data:image/')) {
+      if (lastAiDataUrl.startsWith('data:image/')) {
         try {
-          const driveRes = await uploadToAppsScript(lastAiDataUrl, `Lookbook-${name}-${Date.now()}.webp`);
-          if (driveRes?.url) aiPhotoUrl = driveRes.url;
+          const cloudRes = await uploadImageToCloud(lastAiDataUrl, `Lookbook-${name}-${Date.now()}.webp`, 'maianh-closet/looks');
+          if (cloudRes?.url) aiPhotoUrl = cloudRes.url;
         } catch (err) {
-          console.warn('Không tải được ảnh Lookbook lên Drive, giữ cục bộ:', err.message);
+          console.warn('Không tải được ảnh Lookbook lên cloud, giữ cục bộ:', err.message);
         }
       }
 

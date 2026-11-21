@@ -29,8 +29,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const base = (process.env.MUSE_API_BASE || 'http://160.191.243.214:18610/v1').replace(/\/$/, '');
-  const apiKey = process.env.MUSE_API_KEY || 'm2a-museai-image-api-secret-key';
+  const base = (process.env.MUSE_API_BASE || '').replace(/\/$/, '');
+  const apiKey = process.env.MUSE_API_KEY;
+  if (!base || !apiKey) {
+    return res.status(500).json({ error: 'Thiếu biến môi trường MUSE_API_BASE hoặc MUSE_API_KEY trên server' });
+  }
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
