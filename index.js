@@ -123,46 +123,6 @@ async function uploadImageToCloud(base64Data, fileName, folder = 'maianh-closet/
   return await uploadToR2(base64Data, fileName, folder);
 }
 
-async function uploadToAppsScript(base64Data, fileName) {
-  if (!appsScriptUrl) throw new Error('Chưa thiết lập đường dẫn Google Apps Script');
-
-  const payload = {
-    action: 'upload',
-    name: fileName || `item-${Date.now()}.png`,
-    base64: base64Data,
-    mimeType: 'image/png'
-  };
-
-  // Sử dụng 'text/plain' để tránh trình duyệt gửi CORS OPTIONS preflight request tới Google Apps Script
-  const response = await fetch(appsScriptUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
-    },
-    body: JSON.stringify(payload)
-  });
-
-  const text = await response.text();
-  let result;
-  try {
-    result = JSON.parse(text);
-  } catch (err) {
-    if (text.includes('Sign in') || text.includes('AccountsSignInUi') || text.includes('Unauthorized')) {
-      throw new Error('Apps Script đang chặn quyền truy cập. Hãy vào Apps Script ➔ Deploy ➔ Manage deployments ➔ Đổi "Who has access" thành "Anyone" nhé!');
-    }
-    throw new Error('Phản hồi từ Apps Script không hợp lệ: ' + text.slice(0, 120));
-  }
-
-  if (result.status === 'error') {
-    throw new Error(result.message || 'Lỗi khi lưu ảnh vào Google Drive');
-  }
-
-  // Trả về URL xem ảnh công khai qua Google CDN
-  const fileId = result.id || result.fileId;
-  const viewUrl = result.url || (fileId ? `https://lh3.googleusercontent.com/d/${fileId}` : null);
-  return { id: fileId, url: viewUrl || base64Data };
-}
-
 // =============================================================================
 // 5. CƠ SỞ DỮ LIỆU INDEXEDDB (OFFLINE-FIRST)
 // =============================================================================
@@ -240,34 +200,43 @@ async function fetchCloudDatabase(showToast = false) {
       const localByFileId = new Map(localItems.filter(x => x.driveFileId).map(x => [x.driveFileId, x]));
       const deletedSet = new Set(Array.isArray(data.deletedFileIds) ? data.deletedFileIds : []);
 
-      for (const local of localItems) {
-        if (local.driveFileId && deletedSet.has(local.driveFileId)) {
-          await req(tx('items', 'readwrite').delete(local.id));
-        }
-      }
+      // Gom toàn bộ thao tác vào 1 transaction IndexedDB duy nhất để tránh khựng UI
+      await new Promise((resolve, reject) => {
+        const batchTx = db.transaction(['items', 'looks'], 'readwrite');
+        const itemStore = batchTx.objectStore('items');
+        const lookStore = batchTx.objectStore('looks');
 
-      for (const item of data.items) {
-        if (item.driveFileId && deletedSet.has(item.driveFileId)) continue;
-        const existingByFile = item.driveFileId ? localByFileId.get(item.driveFileId) : null;
-        if (existingByFile && existingByFile.id !== item.id) {
-          if (item.id.startsWith('drive-')) continue;
-          await req(tx('items', 'readwrite').delete(existingByFile.id));
+        for (const local of localItems) {
+          if (local.driveFileId && deletedSet.has(local.driveFileId)) {
+            itemStore.delete(local.id);
+          }
         }
-        await req(tx('items', 'readwrite').put(item));
-      }
-      if (Array.isArray(data.looks)) {
-        for (const look of data.looks) {
-          await req(tx('looks', 'readwrite').put(look));
+        for (const item of data.items) {
+          if (item.driveFileId && deletedSet.has(item.driveFileId)) continue;
+          const existingByFile = item.driveFileId ? localByFileId.get(item.driveFileId) : null;
+          if (existingByFile && existingByFile.id !== item.id) {
+            if (item.id.startsWith('drive-')) continue;
+            itemStore.delete(existingByFile.id);
+          }
+          itemStore.put(item);
         }
-      }
+        if (Array.isArray(data.looks)) {
+          for (const look of data.looks) {
+            lookStore.put(look);
+          }
+        }
+        batchTx.oncomplete = () => resolve();
+        batchTx.onerror = () => reject(batchTx.error);
+      });
+
       await reload();
       if (statusEl) statusEl.textContent = 'Đã đồng bộ';
-      if (showToast) toast(`Đã đồng bộ ${data.items.length} món đồ từ Drive`);
+      if (showToast) toast(`Đã đồng bộ ${data.items.length} món đồ`);
       return true;
     }
   } catch (err) {
-    console.warn('Không thể tải từ Drive:', err.message);
-    if (showToast) toast('Chưa kết nối được Drive: ' + err.message);
+    console.warn('Không thể tải đồng bộ:', err.message);
+    if (showToast) toast('Chưa đồng bộ được: ' + err.message);
   } finally {
     isSyncing = false;
     if (iconEl) iconEl.classList.remove('fa-spin');
@@ -319,15 +288,15 @@ async function syncDatabaseToDrive(showToast = false, deletedFileIds = []) {
     } catch (_) {}
 
     if (result.status === 'success') {
-      if (statusEl) statusEl.textContent = 'Đã lưu';
-      if (showToast) toast('Đã cập nhật dữ liệu tủ đồ lên Drive');
+      if (statusEl) statusEl.textContent = 'Đã đồng bộ';
+      if (showToast) toast('Đã đồng bộ dữ liệu tủ đồ');
     }
   } catch (err) {
-    console.warn('Lỗi lưu dữ liệu lên Drive:', err.message);
+    console.warn('Lỗi đồng bộ dữ liệu:', err.message);
   } finally {
     if (iconEl) iconEl.classList.remove('fa-spin');
     setTimeout(() => {
-      if (statusEl && statusEl.textContent === 'Đã lưu') {
+      if (statusEl && statusEl.textContent === 'Đã đồng bộ') {
         statusEl.textContent = '';
       }
     }, 2500);
@@ -386,7 +355,7 @@ function renderCloset() {
     return `
     <div class="item ${isSelected ? 'item-selected' : ''}" draggable="true" data-id="${esc(i.id)}">
       <div class="item-media">
-        <img src="${i.photo}" alt="${esc(i.name)}" loading="lazy">
+        <img src="${i.photo}" alt="${esc(i.name)}" loading="lazy" decoding="async">
         ${isSelected ? '<span class="item-picked-badge" title="Đang trong outfit"><i class="fa-solid fa-check" aria-hidden="true"></i></span>' : ''}
         <div class="item-hover-actions">
           <button type="button" class="item-fab" title="Xem toàn màn hình" aria-label="Xem toàn màn hình" data-zoom="${esc(i.id)}"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i></button>
@@ -1295,7 +1264,7 @@ document.querySelectorAll('.tab-pill, .tab').forEach(b => {
 
 if ($('syncCloudBtn')) {
   $('syncCloudBtn').onclick = async () => {
-    toast('Đang đồng bộ dữ liệu với Drive...');
+    toast('Đang đồng bộ...');
     await fetchCloudDatabase(true);
     await syncDatabaseToDrive();
   };
