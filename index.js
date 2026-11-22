@@ -561,19 +561,79 @@ async function deleteItem(id) {
 }
 
 // =============================================================================
-// 7. LOOKBOOK STUDIO (NON-OVERLAPPING AUTO-PACKING CANVAS)
+// 7. LOOKBOOK STUDIO & TƯ DUY THỜI TRANG (FASHION STYLING ENGINE)
 // =============================================================================
 function getItemZone(it) {
   const name = (it.name || '').toLowerCase();
-  if (it.cat === 'Váy liền') return 'DRESS';
-  if (it.cat === 'Áo' || it.cat === 'Áo khoác') return 'UPPER';
-  if (it.cat === 'Quần' || it.cat === 'Chân váy') return 'LOWER';
-  if (it.cat === 'Giày dép') return 'FOOT';
-  if (it.cat === 'Túi xách') return 'SIDE';
-  if (/nón|mũ|kính|kẹp|băng đô|cài/.test(name)) return 'HEAD';
-  if (/khăn|choàng|vòng cổ|dây chuyền|choker|cà vạt|nơ/.test(name)) return 'NECK';
+  const note = (it.note || '').toLowerCase();
+  if (it.cat === 'Váy liền' || /\b(đầm|váy liền|jumpsuit)\b/.test(name)) return 'DRESS';
+  if (/nón|mũ|cap|hat|beanie|beret|kính|kẹp|băng đô|cài tóc/.test(name)) return 'HEAD';
+  if (/cổ áo|cổ giả|khăn|choàng cổ|vòng cổ|dây chuyền|choker|cà vạt|nơ cổ/.test(name)) return 'NECK';
   if (/đai|corset|thắt lưng|belt/.test(name)) return 'WAIST';
+  if (
+    it.cat === 'Áo' ||
+    it.cat === 'Áo khoác' ||
+    /áo|sơ mi|cúp ngực|croptop|crop top|babydoll|peplum|sweater|cardigan|blazer|gile|vest|hoodie|ba lỗ|2s|hai dây/.test(name)
+  ) {
+    return 'UPPER';
+  }
+  if (it.cat === 'Quần' || it.cat === 'Chân váy' || /quần|chân váy|jeans|short|kaki|váy xếp ly/.test(name)) return 'LOWER';
+  if (it.cat === 'Giày dép' || /giày|dép|boot|sandal|sneaker|cao gót/.test(name)) return 'FOOT';
+  if (it.cat === 'Túi xách' || /túi|balo|ví|clutch|tote/.test(name)) return 'SIDE';
+  if (/phối với áo sơ mi/.test(note)) return 'UPPER';
   return 'SIDE';
+}
+
+// Phân tích hồ sơ món đồ theo lý thuyết sách thời trang (The Curated Closet, Rule of Thirds, Layering Architecture)
+function classifyGarmentProfile(it) {
+  const name = (it.name || '').toLowerCase();
+  const note = (it.note || '').toLowerCase();
+  const season = (it.season || '').toLowerCase();
+  const zone = getItemZone(it);
+
+  let role = zone;
+  if (zone === 'UPPER') {
+    if (/cúp ngực|2s|hai dây|ba lỗ|quây|bra|tank/.test(name)) {
+      role = 'BASE_TOP';
+    } else if (/xuyên thấu|lưới|mesh|ren/.test(name)) {
+      role = 'SHEER_LAYER';
+    } else if (it.cat === 'Áo khoác' || /cardigan|blazer|sweater|khoác|choàng|len nâu nút vàng/.test(name)) {
+      role = 'OUTERWEAR';
+    } else if (/sơ mi|caro|bóng chày/.test(name)) {
+      role = 'BUTTON_SHIRT';
+    } else if (/peplum|đắp chéo|siết eo|thắt eo|babydoll|trễ vai|cột nơ|kiểu/.test(name)) {
+      role = 'STATEMENT_TOP';
+    } else {
+      role = 'CORE_TOP';
+    }
+  } else if (zone === 'NECK' && /cổ áo|cổ giả/.test(name)) {
+    role = 'FAKE_COLLAR';
+  } else if (zone === 'WAIST') {
+    role = 'CORSET_BELT';
+  }
+
+  let volume = 'REGULAR';
+  const cleanNote = note.replace(/ko nên mặc với quần rộng|không nên mặc với quần rộng/g, '');
+  if (/ống rộng|oversize|rộng|babydoll|giấu quần|túi hộp|voan/.test(name + ' ' + cleanNote)) {
+    volume = 'OVERSIZED';
+  } else if (/ôm|cúp ngực|2s|ba lỗ|siết eo|thắt eo|cạp cao|corset|eo nhỏ|croptop|crop top/.test(name + ' ' + cleanNote)) {
+    volume = 'FITTED';
+  }
+
+  let directive = '';
+  if (/đóng thùng|chặt thùng/.test(note)) {
+    directive = 'FULL_TUCK';
+  } else if (/giấu quần/.test(note)) {
+    directive = 'BOYFRIEND_UNTUCKED';
+  } else if (/thắt eo|siết eo|tôn dáng/.test(name + ' ' + note)) {
+    directive = 'WAIST_CINCH';
+  } else if (/phối với áo sơ mi/.test(note)) {
+    directive = 'INNER_BANDEAU_LAYER';
+  } else if (/tập gym|đồ tập|đi tập/.test(name + ' ' + note + ' ' + season)) {
+    directive = 'ATHLEISURE';
+  }
+
+  return { zone, role, volume, directive };
 }
 
 function selectedPieces() {
@@ -583,12 +643,18 @@ function selectedPieces() {
   return selectedIds
     .map(id => items.find(x => x.id === id))
     .filter(Boolean)
-    .map(it => ({ cat: it.cat, zone: getItemZone(it), it }));
+    .map(it => {
+      const profile = classifyGarmentProfile(it);
+      return { cat: it.cat, zone: profile.zone, profile, it };
+    });
 }
 
 function updateMixCount() {
   const x = $('mixCount');
-  if (x) x.textContent = selectedPieces().length + ' món';
+  if (!x) return;
+  const sel = selectedPieces();
+  const upperCount = sel.filter(s => s.zone === 'UPPER').length;
+  x.textContent = upperCount >= 2 ? `${sel.length} món · 2 Style` : `${sel.length} món`;
 }
 
 // Bố cục Flat-lay tự nhiên như bản cũ + Vật lý tự đẩy nhau (Force-Directed Repulsion) để không bao giờ đè lên nhau và luôn nằm trọn trong Canvas
@@ -612,27 +678,37 @@ function computeCanvasLayout(pieces) {
   const scale = N <= 4 ? 1 : (N === 5 ? 0.94 : Math.max(0.80, 2.0 / Math.sqrt(N)));
 
   let accIdx = 0;
-  let topIdx = 0;
-  const hasTop = pieces.some(p => p.cat === 'Áo');
+  let upperIdx = 0;
+  const totalUppers = pieces.filter(p => p.zone === 'UPPER').length;
   const nodes = pieces.map((piece, idx) => {
     let base = { ...(POSITIONS[piece.cat] || POSITIONS['Phụ kiện']) };
 
-    if (piece.cat === 'Áo') {
-      base = topIdx === 0
-        ? { x: 27, y: 7, w: 45, h: 36, r: -3, z: 4 }
-        : { x: 4, y: 9, w: 38, h: 32, r: -7, z: 5 };
-      topIdx++;
-    } else if (piece.cat === 'Áo khoác') {
-      base = hasTop
-        ? { x: 4, y: 36, w: 38, h: 35, r: -6, z: 5 }
-        : { x: 23, y: 8, w: 48, h: 40, r: -6, z: 5 };
-    } else if (piece.cat === 'Quần' || piece.cat === 'Chân váy') {
+    if (piece.zone === 'UPPER') {
+      if (totalUppers === 1) {
+        base = { x: 27, y: 7, w: 45, h: 36, r: -3, z: 4 };
+      } else if (totalUppers === 2) {
+        // Khi có 2 món thân trên: đặt cân xứng Trái (Style 01) - Phải (Style 02) phía trên quần/váy
+        base = upperIdx === 0
+          ? { x: 6, y: 8, w: 41, h: 35, r: -4, z: 4 }
+          : { x: 53, y: 8, w: 41, h: 35, r: 4, z: 5 };
+      } else {
+        const slots = [
+          { x: 5, y: 8, w: 36, h: 32, r: -5, z: 4 },
+          { x: 33, y: 7, w: 38, h: 33, r: -2, z: 5 },
+          { x: 60, y: 9, w: 35, h: 32, r: 5, z: 5 }
+        ];
+        base = slots[upperIdx % slots.length];
+      }
+      upperIdx++;
+    } else if (piece.zone === 'LOWER') {
       base = { x: 28, y: 48, w: 44, h: 44, r: 3, z: 3 };
-    } else if (piece.cat === 'Phụ kiện') {
-      base = { ...accAnchors[accIdx % accAnchors.length] };
-      accIdx++;
+    } else if (piece.zone === 'DRESS') {
+      base = { x: 25, y: 12, w: 50, h: 70, r: -2, z: 4 };
     } else if (piece.cat === 'Túi xách') {
       base = { x: 66, y: 36, w: 29, h: 27, r: 8, z: 7 };
+    } else if (piece.zone !== 'FOOT') {
+      base = { ...accAnchors[accIdx % accAnchors.length] };
+      accIdx++;
     }
 
     const w = base.w * scale;
@@ -1363,102 +1439,376 @@ if ($('aiAutoTagBtn')) {
   };
 }
 
-// 11B. Ảnh Ma-nơ-canh gốc chuẩn (Canonical Base Mannequin 1024x1024) + Bảng ghép 4 vùng cơ thể (Anatomical Zone Boards)
-let cachedMannequinBaseUrl = '';
+// 11B. Hệ thống Ma-nơ-canh Linh Hoạt (Adaptive Couture Mannequin 1024x1024) & Động cơ Tư Duy Thời Trang (Fashion Book Styling Engine)
+function drawCoutureMannequinFigure(ctx, cx, scale, opts = {}) {
+  ctx.save();
+  ctx.translate(cx, opts.topY || 70);
+  ctx.scale(scale, scale);
 
-function getBaseMannequinDataUrl() {
-  if (cachedMannequinBaseUrl) return cachedMannequinBaseUrl;
+  const hasHeadCrown = !!opts.hasHeadCrown;
+  const pose = opts.pose || 'editorial_left';
+
+  // 1. Bóng đổ sàn & Bệ đứng đá Travertine / Gỗ sồi tối giản (không dùng cọc giữa háng để quần ống rộng/short vào phom chuẩn 3D)
+  const floorShadow = ctx.createRadialGradient(0, 865, 12, 0, 865, 165);
+  floorShadow.addColorStop(0, 'rgba(52, 42, 30, 0.22)');
+  floorShadow.addColorStop(1, 'rgba(52, 42, 30, 0)');
+  ctx.fillStyle = floorShadow;
+  ctx.beginPath();
+  ctx.ellipse(0, 865, 165, 24, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Đế tròn bảo tàng (Museum Plinth) + Trụ đỡ lệch phía sau bắp chân
+  const plinthGrad = ctx.createLinearGradient(-115, 835, 115, 875);
+  plinthGrad.addColorStop(0, '#D8CFC2');
+  plinthGrad.addColorStop(0.5, '#EFEAE1');
+  plinthGrad.addColorStop(1, '#B8AC9B');
+  ctx.fillStyle = plinthGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, 854, 112, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(120, 102, 82, 0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Chất liệu vải Linen / Bisque cao cấp của ma-nơ-canh nhà mốt
+  const linenGrad = ctx.createLinearGradient(-145, 70, 145, 780);
+  linenGrad.addColorStop(0, '#F3ECE0');
+  linenGrad.addColorStop(0.45, '#E4D8C5');
+  linenGrad.addColorStop(0.85, '#CEBEA6');
+  linenGrad.addColorStop(1, '#BAA78D');
+
+  const limbGrad = ctx.createLinearGradient(-150, 120, 150, 820);
+  limbGrad.addColorStop(0, '#EDE4D5');
+  limbGrad.addColorStop(0.6, '#DACBB5');
+  limbGrad.addColorStop(1, '#C3B197');
+
+  const woodGrad = ctx.createLinearGradient(-28, 0, 28, 0);
+  woodGrad.addColorStop(0, '#9E7347');
+  woodGrad.addColorStop(0.5, '#C89F70');
+  woodGrad.addColorStop(1, '#845C33');
+
+  // 2. Đôi chân điêu khắc chuẩn tỉ lệ 1:2 (giúp quần tây, quần ống rộng, quần short và chân váy rủ tự nhiên)
+  ctx.fillStyle = limbGrad;
+  // Chân trái
+  ctx.beginPath();
+  ctx.moveTo(-78, 430);
+  ctx.bezierCurveTo(-86, 540, -76, 650, -56, 838);
+  ctx.lineTo(-24, 838);
+  ctx.bezierCurveTo(-20, 660, -14, 545, -10, 442);
+  ctx.closePath();
+  ctx.fill();
+
+  // Chân phải (dáng đứng contrapposto thanh thoát)
+  const rightLegShift = pose === 'contrapposto_right' ? 14 : 6;
+  ctx.beginPath();
+  ctx.moveTo(10, 442);
+  ctx.bezierCurveTo(16, 545, 22 + rightLegShift * 0.4, 660, 26 + rightLegShift, 838);
+  ctx.lineTo(58 + rightLegShift, 838);
+  ctx.bezierCurveTo(78 + rightLegShift * 0.5, 650, 86, 540, 78, 430);
+  ctx.closePath();
+  ctx.fill();
+
+  // 3. Tay khớp gỗ/linen linh hoạt (Articulated Atelier Arms) giúp tay áo sơ mi, blazer, áo trễ vai và quai túi vào phom thật
+  ctx.strokeStyle = '#D5C4AC';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Cánh tay trái
+  ctx.lineWidth = 28;
+  ctx.beginPath();
+  if (pose === 'contrapposto_right') {
+    // Tay trái hơi chống nhẹ gần hông tạo độ mở cho áo khoác/sơ mi
+    ctx.moveTo(-118, 148);
+    ctx.quadraticCurveTo(-156, 255, -112, 355);
+  } else {
+    // Tay trái buông tự nhiên dọc thân
+    ctx.moveTo(-118, 148);
+    ctx.quadraticCurveTo(-142, 265, -126, 395);
+  }
+  ctx.stroke();
+
+  // Cánh tay phải
+  ctx.beginPath();
+  if (pose === 'editorial_left') {
+    // Cẳng tay phải hơi nâng nhẹ tạo điểm treo túi hoặc khoe tay áo xắn
+    ctx.moveTo(118, 148);
+    ctx.quadraticCurveTo(154, 252, 114, 348);
+  } else {
+    ctx.moveTo(118, 148);
+    ctx.quadraticCurveTo(142, 265, 126, 395);
+  }
+  ctx.stroke();
+
+  // Khớp cầu vai gỗ sồi của ma-nơ-canh thiết kế
+  ctx.fillStyle = woodGrad;
+  ctx.beginPath();
+  ctx.arc(-118, 148, 15, 0, Math.PI * 2);
+  ctx.arc(118, 148, 15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 4. Đầu / Cổ linh hoạt (Có vòm đầu điêu khắc không mặt khi đội Nón/Kính, hoặc chóp gỗ Couture khi không đội nón)
+  if (hasHeadCrown) {
+    // Cổ thanh mảnh + Vòm đầu điêu khắc không mặt bọc vải linen để đội nón kết/mũ chuẩn góc
+    ctx.fillStyle = linenGrad;
+    ctx.fillRect(-21, 56, 42, 46);
+    ctx.beginPath();
+    ctx.ellipse(0, 18, 44, 56, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Cổ linen + Chóp gỗ sồi tiện tròn chuẩn Haute Couture
+    ctx.fillStyle = linenGrad;
+    ctx.fillRect(-22, 68, 44, 34);
+    ctx.fillStyle = woodGrad;
+    ctx.beginPath();
+    ctx.roundRect(-22, 42, 44, 30, 10);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(0, 40, 17, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 5. Thân Ma-nơ-canh chuẩn tỉ lệ Vàng 1/3 - 2/3 (Cầu vai 38 - Eo 1/3 tại y=292 - Hông 445)
+  ctx.fillStyle = linenGrad;
+  ctx.beginPath();
+  ctx.moveTo(-23, 94); // Chân cổ trái
+  ctx.quadraticCurveTo(-35, 116, -110, 130); // Cầu vai trái
+  ctx.quadraticCurveTo(-128, 136, -122, 164); // Đỉnh vai trái
+  ctx.bezierCurveTo(-110, 215, -90, 245, -66, 292); // Ngực thu về eo 1/3 trái
+  ctx.bezierCurveTo(-58, 314, -88, 360, -90, 412); // Eo mở ra hông trái
+  ctx.quadraticCurveTo(-86, 452, -38, 458); // Đáy hông trái
+  ctx.lineTo(38, 458); // Đáy hông phải
+  ctx.quadraticCurveTo(86, 452, 90, 412); // Hông phải
+  ctx.bezierCurveTo(88, 360, 58, 314, 66, 292); // Eo phải
+  ctx.bezierCurveTo(90, 245, 110, 215, 122, 164); // Ngực lên đỉnh vai phải
+  ctx.quadraticCurveTo(128, 136, 110, 130); // Cầu vai phải
+  ctx.quadraticCurveTo(35, 116, 23, 94); // Chân cổ phải
+  ctx.closePath();
+  ctx.fill();
+
+  // Đường chỉ may công thái học & Đai eo Tỉ lệ vàng 1/3 (Waist Landmark)
+  ctx.strokeStyle = 'rgba(122, 102, 78, 0.34)';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(0, 96);
+  ctx.lineTo(0, 456); // Trục giữa thân
+  ctx.moveTo(-68, 134);
+  ctx.bezierCurveTo(-56, 210, -44, 292, -52, 452); // Đường princess seam trái
+  ctx.moveTo(68, 134);
+  ctx.bezierCurveTo(56, 210, 44, 292, 52, 452); // Đường princess seam phải
+  ctx.moveTo(-66, 294);
+  ctx.quadraticCurveTo(0, 304, 66, 294); // Đai eo chuẩn 1/3
+  ctx.stroke();
+
+  // Nhãn chân đế (STYLE 01 / STYLE 02 khi ở chế độ 2 Style)
+  if (opts.badge) {
+    ctx.fillStyle = '#1A3323';
+    ctx.font = 'bold 17px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(opts.badge, 0, 892);
+  }
+
+  ctx.restore();
+}
+
+function getAdaptiveMannequinDataUrl(selected, stylingPlan) {
   const c = document.createElement('canvas');
   c.width = 1024;
   c.height = 1024;
   const ctx = c.getContext('2d');
 
-  // Phông studio kem ấm đồng nhất 100%
-  const bg = ctx.createRadialGradient(512, 420, 80, 512, 512, 680);
-  bg.addColorStop(0, '#F7F4EE');
-  bg.addColorStop(1, '#EAE4DA');
+  // Phông studio kem ấm Haute Lookbook
+  const bg = ctx.createRadialGradient(512, 420, 80, 512, 512, 700);
+  bg.addColorStop(0, '#F8F5EF');
+  bg.addColorStop(1, '#EAE3D8');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 1024, 1024);
 
-  // Bóng sàn studio mềm
-  const floorShadow = ctx.createRadialGradient(512, 935, 10, 512, 935, 175);
-  floorShadow.addColorStop(0, 'rgba(60, 48, 35, 0.18)');
-  floorShadow.addColorStop(1, 'rgba(60, 48, 35, 0)');
-  ctx.fillStyle = floorShadow;
-  ctx.beginPath();
-  ctx.ellipse(512, 935, 175, 24, 0, 0, Math.PI * 2);
-  ctx.fill();
+  const hasHeadCrown = selected.some(s => s.zone === 'HEAD');
 
-  // Trụ gỗ sồi & chân đế chữ thập thanh mảnh
-  const woodGrad = ctx.createLinearGradient(496, 0, 528, 0);
-  woodGrad.addColorStop(0, '#A5794C');
-  woodGrad.addColorStop(0.5, '#C89E6E');
-  woodGrad.addColorStop(1, '#8C6239');
-  ctx.fillStyle = woodGrad;
-  ctx.fillRect(502, 540, 20, 385);
+  if (stylingPlan?.mode === 'DUAL_STYLE') {
+    // Vẽ 2 Ma-nơ-canh song song (STYLE 01 bên trái & STYLE 02 bên phải) để AI lên 2 cách phối/2 style rõ ràng
+    drawCoutureMannequinFigure(ctx, 282, 0.88, {
+      topY: 110,
+      hasHeadCrown,
+      pose: 'editorial_left',
+      badge: 'STYLE 01'
+    });
+    drawCoutureMannequinFigure(ctx, 742, 0.88, {
+      topY: 110,
+      hasHeadCrown,
+      pose: 'contrapposto_right',
+      badge: 'STYLE 02'
+    });
+  } else {
+    drawCoutureMannequinFigure(ctx, 512, 0.96, {
+      topY: 74,
+      hasHeadCrown,
+      pose: 'editorial_left'
+    });
+  }
 
-  // Chân đế gỗ 3 chạc
-  ctx.strokeStyle = '#9D7246';
-  ctx.lineWidth = 16;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(512, 895);
-  ctx.lineTo(410, 932);
-  ctx.moveTo(512, 895);
-  ctx.lineTo(614, 932);
-  ctx.moveTo(512, 885);
-  ctx.lineTo(512, 940);
-  ctx.stroke();
+  return c.toDataURL('image/png');
+}
 
-  // Chóp cổ gỗ sồi tiện tròn
-  ctx.fillStyle = woodGrad;
-  ctx.beginPath();
-  ctx.roundRect(488, 128, 48, 38, 12);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(512, 126, 20, 10, 0, 0, Math.PI * 2);
-  ctx.fill();
+// Tư duy thời trang từ sách styling (The Curated Closet, Rule of Thirds 1:2, Volume Counterbalance, Layering Theory)
+function buildSingleGarmentStylingRule(piece, bottomPiece) {
+  const { role, volume, directive } = piece.profile;
+  const bottomVol = bottomPiece?.profile?.volume || 'REGULAR';
+  const rules = [];
 
-  // Thân Ma-nơ-canh nữ bọc vải linen kem chuẩn tỉ lệ Haute Couture (vai 38 - eo thon 60 - hông 88)
-  const torsoGrad = ctx.createLinearGradient(375, 160, 650, 550);
-  torsoGrad.addColorStop(0, '#EFE7D8');
-  torsoGrad.addColorStop(0.42, '#E2D5C1');
-  torsoGrad.addColorStop(0.85, '#CBBAA1');
-  torsoGrad.addColorStop(1, '#B8A58B');
+  if (directive === 'FULL_TUCK') {
+    rules.push('Full tailored tuck into the high-waisted waistband (honoring item note: đóng/chặt thùng) to establish a crisp 1:2 Rule-of-Thirds leg-lengthening line');
+  } else if (directive === 'BOYFRIEND_UNTUCKED') {
+    rules.push('Relaxed boyfriend untucked drape covering the upper hip (2:1 street proportion as noted: mặc giấu quần)');
+  } else if (directive === 'WAIST_CINCH' || role === 'STATEMENT_TOP') {
+    rules.push('Sculpted waist-cinched fit accentuating the narrowest 1/3 natural waist point');
+  } else if (role === 'BUTTON_SHIRT') {
+    if (volume === 'OVERSIZED' && bottomVol === 'OVERSIZED') {
+      rules.push('Asymmetric French tuck (half-tuck front hem into waistband) + roll sleeves to mid-forearm + unbutton top 2 collar buttons to prevent oversized-on-oversized bulk');
+    } else {
+      rules.push('Crisp French tuck at the front waist with sleeves neatly cuffed to mid-forearm and collar framed cleanly');
+    }
+  } else if (volume === 'OVERSIZED' && bottomVol === 'OVERSIZED') {
+    rules.push('Structured French front-tuck at the high waist to counterbalance the wide-leg bottom silhouette');
+  } else {
+    rules.push('Clean 1:2 Rule-of-Thirds waist transition aligned neatly with the bottom waistband');
+  }
 
-  ctx.fillStyle = torsoGrad;
-  ctx.beginPath();
-  ctx.moveTo(486, 156); // Cổ trái
-  ctx.quadraticCurveTo(478, 182, 392, 198); // Cầu vai trái
-  ctx.quadraticCurveTo(372, 204, 376, 232); // Đỉnh vai trái
-  ctx.bezierCurveTo(385, 290, 412, 315, 438, 368); // Ngực xuống eo trái
-  ctx.bezierCurveTo(446, 392, 412, 438, 408, 488); // Eo mở ra hông trái
-  ctx.quadraticCurveTo(410, 536, 464, 544); // Đáy hông trái
-  ctx.lineTo(560, 544); // Đáy hông phải
-  ctx.quadraticCurveTo(614, 536, 616, 488); // Hông phải
-  ctx.bezierCurveTo(612, 438, 578, 392, 586, 368); // Eo phải
-  ctx.bezierCurveTo(612, 315, 639, 290, 648, 232); // Ngực lên đỉnh vai phải
-  ctx.quadraticCurveTo(652, 204, 632, 198); // Cầu vai phải
-  ctx.quadraticCurveTo(546, 182, 538, 156); // Cổ phải
-  ctx.closePath();
-  ctx.fill();
+  return rules.join('; ');
+}
 
-  // Đường chỉ may công thái học đặc trưng của ma-nơ-canh thiết kế
-  ctx.strokeStyle = 'rgba(130, 110, 86, 0.32)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(512, 158);
-  ctx.lineTo(512, 544); // Đường trục giữa thân
-  ctx.moveTo(436, 202);
-  ctx.bezierCurveTo(448, 285, 462, 370, 452, 542); // Đường cắt cúp ngực trái
-  ctx.moveTo(588, 202);
-  ctx.bezierCurveTo(576, 285, 562, 370, 572, 542); // Đường cắt cúp ngực phải
-  ctx.moveTo(436, 374);
-  ctx.quadraticCurveTo(512, 384, 588, 374); // Đường đai eo chuẩn
-  ctx.stroke();
+function buildFashionStylingPlan(selected) {
+  const uppers = selected.filter(s => s.zone === 'UPPER');
+  const lowers = selected.filter(s => s.zone === 'LOWER' || s.zone === 'DRESS');
+  const footwear = selected.filter(s => s.zone === 'FOOT');
+  const accessories = selected.filter(s => !['UPPER', 'LOWER', 'DRESS', 'FOOT'].includes(s.zone));
+  const primaryBottom = lowers[0] || null;
 
-  cachedMannequinBaseUrl = c.toDataURL('image/png');
-  return cachedMannequinBaseUrl;
+  // KHI CÓ TỪ 2 MÓN THÂN TRÊN TRỞ LÊN: Tự động kích hoạt Tư duy 2 Style (Dual-Mannequin Editorial Lookbook)
+  if (uppers.length >= 2) {
+    const [u1, u2, ...restUppers] = uppers;
+    const r1 = u1.profile.role;
+    const r2 = u2.profile.role;
+
+    const isBase = r => r === 'BASE_TOP' || r === 'CORE_TOP';
+    const isOuterOrShirt = r => r === 'BUTTON_SHIRT' || r === 'OUTERWEAR' || r === 'SHEER_LAYER';
+
+    let canLayerTogether = false;
+    let innerPiece = u1;
+    let outerPiece = u2;
+
+    if (isBase(r1) && isOuterOrShirt(r2)) {
+      canLayerTogether = true;
+      innerPiece = u1;
+      outerPiece = u2;
+    } else if (isBase(r2) && isOuterOrShirt(r1)) {
+      canLayerTogether = true;
+      innerPiece = u2;
+      outerPiece = u1;
+    } else if (r1 === 'SHEER_LAYER' || r2 === 'SHEER_LAYER') {
+      canLayerTogether = true;
+      innerPiece = r1 === 'SHEER_LAYER' ? u2 : u1;
+      outerPiece = r1 === 'SHEER_LAYER' ? u1 : u2;
+    } else if (r1 === 'OUTERWEAR' || r2 === 'OUTERWEAR') {
+      canLayerTogether = true;
+      innerPiece = r1 === 'OUTERWEAR' ? u2 : u1;
+      outerPiece = r1 === 'OUTERWEAR' ? u1 : u2;
+    }
+
+    // Trường hợp A: 2 áo có thể phối Layering với nhau -> Tạo 2 biến tấu Layering khác biệt trên 2 Ma-nơ-canh
+    if (canLayerTogether) {
+      const outerRole = outerPiece.profile.role;
+      let style1Instruction = '';
+      let style2Instruction = '';
+      let style1Vi = '';
+      let style2Vi = '';
+
+      if (outerRole === 'BUTTON_SHIRT') {
+        style1Instruction = `LEFT MANNEQUIN (STYLE 01 — Effortless Open-Overshirt Layering, 1:2 Proportion): Wear "${innerPiece.it.name}" as a sleek fitted inner base tucked/aligned at the high waist; layer "${outerPiece.it.name}" COMPLETELY UNBUTTONED as a breezy open overshirt with sleeves rolled neatly to mid-forearm.`;
+        style2Instruction = `RIGHT MANNEQUIN (STYLE 02 — Sculpted Waist-Knot / French-Tuck Layering): Wear "${innerPiece.it.name}" underneath peeking cleanly at the V-neckline; style "${outerPiece.it.name}" HALF-BUTTONED and KNOTTED/TIED at the natural 1/3 waist (or asymmetric one-side French tuck) to cinch an hourglass X-silhouette.`;
+        style1Vi = `Style 01 (Trái): "${innerPiece.it.name}" mặc trong ôm gọn + "${outerPiece.it.name}" mở cúc khoác ngoài phóng khoáng, xắn tay 1/3 cẳng tay.`;
+        style2Vi = `Style 02 (Phải): "${outerPiece.it.name}" buộc vạt/sơ vin lệch (French Tuck) chiết eo cao 1:2 trên nền "${innerPiece.it.name}".`;
+      } else if (outerRole === 'SHEER_LAYER') {
+        style1Instruction = `LEFT MANNEQUIN (STYLE 01 — High-Contrast Cropped Overlay): Wear "${innerPiece.it.name}" as the clean structured base layer (neatly tucked if long), and layer the sheer/mesh "${outerPiece.it.name}" directly OVER it to create a sharp 1/3 cropped waist division and rich texture contrast.`;
+        style2Instruction = `RIGHT MANNEQUIN (STYLE 02 — Asymmetric Off-Shoulder Editorial Layering): Pair "${innerPiece.it.name}" and "${outerPiece.it.name}" with an effortless off-one-shoulder drape and relaxed waist styling for soft editorial movement.`;
+        style1Vi = `Style 01 (Trái): Phối lớp tương phản chất liệu — "${innerPiece.it.name}" làm nền + "${outerPiece.it.name}" phủ ngoài phân tách tỉ lệ eo 1:2.`;
+        style2Vi = `Style 02 (Phải): Biến tấu trễ nhẹ một bên vai / thả phom bất đối xứng mềm mại giữa "${outerPiece.it.name}" và "${innerPiece.it.name}".`;
+      } else {
+        style1Instruction = `LEFT MANNEQUIN (STYLE 01 — Tailored Worn-On Layering): Wear "${innerPiece.it.name}" neatly tucked at the 1/3 waist line, with "${outerPiece.it.name}" worn properly on the arms, open-front/unbuttoned, cuffs pushed slightly to reveal wrist proportion.`;
+        style2Instruction = `RIGHT MANNEQUIN (STYLE 02 — Parisian Shoulder-Drape Editorial): Showcase "${innerPiece.it.name}" defining the full waist silhouette while draping "${outerPiece.it.name}" effortlessly over the shoulders like a couture editorial cape.`;
+        style1Vi = `Style 01 (Trái): Layering chuẩn mực — "${innerPiece.it.name}" sơ vin gọn tôn eo 1:2, mặc "${outerPiece.it.name}" mở cúc thanh lịch.`;
+        style2Vi = `Style 02 (Phải): Phong cách Parisian Chic — Khoác hờ "${outerPiece.it.name}" trên cầu vai để khoe trọn phom eo của "${innerPiece.it.name}".`;
+      }
+
+      const sharedMain = [...lowers, ...footwear, ...restUppers];
+      return {
+        mode: 'DUAL_STYLE',
+        subMode: 'DUAL_LAYERING_VARIATIONS',
+        style1: {
+          title: 'STYLE 01 (LEFT MANNEQUIN)',
+          mainPieces: [innerPiece, outerPiece, ...sharedMain],
+          instruction: style1Instruction,
+          summaryVi: style1Vi
+        },
+        style2: {
+          title: 'STYLE 02 (RIGHT MANNEQUIN)',
+          mainPieces: [innerPiece, outerPiece, ...sharedMain],
+          instruction: style2Instruction,
+          summaryVi: style2Vi
+        },
+        accessories
+      };
+    }
+
+    // Trường hợp B: 2 áo độc lập (VD: 2 áo sơ mi, hoặc áo sơ mi + áo đắp chéo/peplum/babydoll) -> Không nhồi chồng lên 1 người mà tách thành 2 Look A/B song song
+    const rule1 = buildSingleGarmentStylingRule(u1, primaryBottom);
+    const rule2 = buildSingleGarmentStylingRule(u2, primaryBottom);
+    const sharedMain = [...lowers, ...footwear, ...restUppers];
+
+    return {
+      mode: 'DUAL_STYLE',
+      subMode: 'CAPSULE_AB_LOOKS',
+      style1: {
+        title: 'STYLE 01 (LEFT MANNEQUIN — LOOK A)',
+        mainPieces: [u1, ...sharedMain],
+        instruction: `LEFT MANNEQUIN (STYLE 01 — Look A featuring ONLY "${u1.it.name}" on upper body, do NOT put "${u2.it.name}" on Left Mannequin): Dress Left Mannequin in "${u1.it.name}" paired with ${lowers.map(l => `"${l.it.name}"`).join(', ') || 'the lower garment'}. Styling technique: ${rule1}.`,
+        summaryVi: `Style 01 (Trái — Look A): Phối "${u1.it.name}" theo phom riêng (${u1.profile.directive === 'FULL_TUCK' ? 'đóng thùng gọn 1:2' : (u1.profile.volume === 'FITTED' ? 'ôm chiết eo tôn dáng' : 'sơ vin vạt trước French Tuck cân bằng tỉ lệ')}).`
+      },
+      style2: {
+        title: 'STYLE 02 (RIGHT MANNEQUIN — LOOK B)',
+        mainPieces: [u2, ...sharedMain],
+        instruction: `RIGHT MANNEQUIN (STYLE 02 — Look B featuring ONLY "${u2.it.name}" on upper body, do NOT put "${u1.it.name}" on Right Mannequin): Dress Right Mannequin in "${u2.it.name}" paired with ${lowers.map(l => `"${l.it.name}"`).join(', ') || 'the lower garment'}. Styling technique: ${rule2}.`,
+        summaryVi: `Style 02 (Phải — Look B): Biến tấu sang "${u2.it.name}" trên cùng nền quần/phụ kiện (${u2.profile.directive === 'BOYFRIEND_UNTUCKED' ? 'thả vạt phóng khoáng 2:1' : (u2.profile.role === 'STATEMENT_TOP' ? 'nhấn eo chữ X chuẩn tỉ lệ vàng' : 'biến tấu cổ và tay áo thanh thoát')}).`
+      },
+      accessories
+    };
+  }
+
+  // CHẾ ĐỘ 1 STYLE (SINGLE MANNEQUIN) VỚI TƯ DUY SÁCH THỜI TRANG
+  const topPiece = uppers[0] || null;
+  const singleRule = topPiece
+    ? buildSingleGarmentStylingRule(topPiece, primaryBottom)
+    : 'Balanced 1:2 Rule-of-Thirds couture drape with clean waist definition';
+
+  let summaryVi = 'Tỉ lệ vàng 1:2 (Rule of Thirds) · Chuẩn hóa phom thực tế & cân bằng độ phồng trên/dưới.';
+  if (topPiece && primaryBottom) {
+    if (topPiece.profile.directive === 'FULL_TUCK') {
+      summaryVi = `Tư duy Stylist: Đóng thùng gọn "${topPiece.it.name}" vào "${primaryBottom.it.name}" theo đúng ghi chú món đồ để kéo dài chân tỉ lệ 1:2.`;
+    } else if (topPiece.profile.directive === 'BOYFRIEND_UNTUCKED') {
+      summaryVi = `Tư duy Stylist: Thả vạt "${topPiece.it.name}" tự nhiên theo phong cách Boyfriend 2:1 đúng ghi chú món đồ.`;
+    } else if (topPiece.profile.volume === 'OVERSIZED' && primaryBottom.profile.volume === 'OVERSIZED') {
+      summaryVi = `Tư duy Stylist: Áo và quần đều phom rộng — tự động sơ vin nửa vạt trước (French Tuck) và xắn nhẹ tay áo để mở khóa vòng eo 1/3.`;
+    } else {
+      summaryVi = `Tư duy Stylist: Cân bằng phom "${topPiece.it.name}" (${topPiece.profile.volume === 'FITTED' ? 'ôm gọn' : 'thoải mái'}) cùng "${primaryBottom.it.name}" theo tỉ lệ 1:2.`;
+    }
+  }
+
+  return {
+    mode: 'SINGLE_STYLE',
+    singleInstruction: singleRule,
+    summaryVi,
+    accessories
+  };
 }
 
 async function loadCanvasSafeImage(src) {
@@ -1479,7 +1829,7 @@ async function loadCanvasSafeImage(src) {
   });
 }
 
-// Gom nhiều món (đặc biệt là nhiều Phụ kiện & Túi) vào 1 bảng 1024x1024 có gắn nhãn vùng đeo [#1 HEAD, #2 NECK, #3 WAIST...]
+// Gom nhiều món vào 1 bảng 1024x1024 có gắn nhãn vùng đeo [#1 HEAD, #2 NECK, #3 WAIST...]
 async function buildLabeledGridBoard(pieceList, boardTitle) {
   const c = document.createElement('canvas');
   c.width = 1024;
@@ -1526,33 +1876,41 @@ async function buildLabeledGridBoard(pieceList, boardTitle) {
       ctx.drawImage(img, x + (cellW - drawW) / 2, y + 12 + (boxH - drawH) / 2, drawW, drawH);
     }
 
-    // In nhãn vùng đeo ngay trên ảnh để AI đọc và đặt đúng vị trí 100%
     ctx.fillStyle = '#1A3323';
     ctx.font = 'bold 18px sans-serif';
-    const label = `#${idx + 1} [${p.zone}] ${p.it.name}`.slice(0, 32);
+    const label = `#${idx + 1} [${p.zone}] ${p.it.name}`.slice(0, 34);
     ctx.fillText(label, x + 14, y + cellH - 16);
   });
 
   return c.toDataURL('image/png');
 }
 
-// Đóng gói tối đa 4 slot ảnh cho muse-image: Slot 1 = Ma-nơ-canh gốc chuẩn, Slot 2..4 = Đồ chính & Bảng Phụ kiện không giới hạn
-async function buildAiReferenceBoards(selected) {
-  const mannequinBase = getBaseMannequinDataUrl();
+// Đóng gói tối đa 4 slot ảnh cho muse-image:
+// - Chế độ 2 Style: Slot 1 = Twin Mannequins (STYLE 01 & STYLE 02), Slot 2 = Bảng đồ STYLE 01, Slot 3 = Bảng đồ STYLE 02, Slot 4 = Bảng Phụ kiện chung
+// - Chế độ 1 Style: Slot 1 = Adaptive Single Mannequin, Slot 2..4 = Đồ chính & Bảng Phụ kiện
+async function buildAiReferenceBoards(selected, stylingPlan) {
+  const mannequinBase = getAdaptiveMannequinDataUrl(selected, stylingPlan);
+  const refs = [mannequinBase];
+
+  if (stylingPlan?.mode === 'DUAL_STYLE') {
+    refs.push(await buildLabeledGridBoard(stylingPlan.style1.mainPieces, 'STYLE 01 (LEFT MANNEQUIN) OUTFIT'));
+    refs.push(await buildLabeledGridBoard(stylingPlan.style2.mainPieces, 'STYLE 02 (RIGHT MANNEQUIN) OUTFIT'));
+    if (stylingPlan.accessories.length >= 1) {
+      refs.push(await buildLabeledGridBoard(stylingPlan.accessories, 'SHARED ACCESSORIES (BOTH MANNEQUINS)'));
+    }
+    return refs.slice(0, 4);
+  }
+
   const mainGarments = selected.filter(s => ['UPPER', 'DRESS', 'LOWER', 'FOOT'].includes(s.zone));
   const accessories = selected.filter(s => !['UPPER', 'DRESS', 'LOWER', 'FOOT'].includes(s.zone));
 
-  const refs = [mannequinBase];
-
   if (selected.length <= 3) {
-    // Nếu tổng <= 3 món: gửi thẳng Ma-nơ-canh gốc + từng ảnh gốc
     for (const s of selected) {
       if (s.it.photo) refs.push(s.it.photo);
     }
     return refs;
   }
 
-  // Nếu có nhiều món / nhiều phụ kiện (> 3 món): chia thành các Bảng Vùng 1024x1024 để không bị cắt mất món nào
   const upperGarments = mainGarments.filter(s => s.zone === 'UPPER' || s.zone === 'DRESS');
   const lowerGarments = mainGarments.filter(s => s.zone === 'LOWER' || s.zone === 'FOOT');
 
@@ -1582,6 +1940,9 @@ if ($('aiGenerateBtn')) {
     const selected = selectedPieces();
     if (!selected.length) return toast('Hãy chọn ít nhất 1 món đồ trên bảng trước');
 
+    const stylingPlan = buildFashionStylingPlan(selected);
+    const isDual = stylingPlan.mode === 'DUAL_STYLE';
+
     const btn = $('aiGenerateBtn');
     const oldHtml = btn.innerHTML;
     const box = $('aiResultBox');
@@ -1589,50 +1950,80 @@ if ($('aiGenerateBtn')) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
     box.classList.remove('hidden');
-    stage.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Đang đóng gói ảnh Ma-nơ-canh gốc & bảng phụ kiện...';
+    stage.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>${
+      isDual
+        ? 'Đang phân tích tư duy thời trang & dựng 2 Style trên cặp Ma-nơ-canh...'
+        : 'Đang phân tích tỉ lệ trang phục & chuẩn bị Ma-nơ-canh...'
+    }`;
 
     try {
-      const refImages = await buildAiReferenceBoards(selected);
+      const refImages = await buildAiReferenceBoards(selected, stylingPlan);
 
       const zonePlacementGuide = {
-        HEAD: 'Place on the top/head position above the mannequin neck finial',
-        NECK: 'Drape or tie neatly around the mannequin neck/collar area',
-        UPPER: 'Dress onto the mannequin upper torso/shoulders',
-        DRESS: 'Dress full-length onto the mannequin torso draping down over hips',
-        WAIST: 'Fasten securely around the narrowest part of the mannequin waist OVER the top/dress',
-        LOWER: 'Fit onto the mannequin waist and hips hanging down cleanly over the wooden stand',
-        FOOT: 'Place neatly at the base of the wooden stand underneath the hemline',
-        SIDE: 'Display cleanly beside the mannequin hip/shoulder as a coordinated boutique styling prop'
+        HEAD: 'Fit naturally onto the sculpted faceless mannequin head crown at an editorial angle',
+        NECK: 'Drape or fasten cleanly around the mannequin neck/collarbone',
+        UPPER: 'Dress onto the mannequin upper torso and articulated arms with realistic sleeve drape',
+        DRESS: 'Dress full-length onto the mannequin torso draping naturally over hips and legs',
+        WAIST: 'Fasten securely around the narrowest 1/3 natural waist point OVER the top/dress',
+        LOWER: 'Fit onto the mannequin high waist, hips, and sculpted legs with authentic trouser/skirt drape (no pole blocking the legs)',
+        FOOT: 'Place cleanly on/at the mannequin ankles on the studio plinth',
+        SIDE: 'Hang naturally from the articulated forearm/shoulder or display on the plinth beside the mannequin'
       };
 
       const normalizedBlock = selected
-        .map((s, idx) => `- Item #${idx + 1} [${s.zone} — ${s.cat}]: "${s.it.name}"${s.it.color ? `, exact color: ${s.it.color}` : ''}${s.it.note ? `, detail: ${s.it.note}` : ''}. Placement: ${zonePlacementGuide[s.zone] || 'On mannequin'}.`)
+        .map((s, idx) => `- Item #${idx + 1} [${s.zone} — ${s.cat}]: "${s.it.name}"${s.it.color ? `, exact color: ${s.it.color}` : ''}${s.it.note ? `, stylist note: ${s.it.note}` : ''}. Placement: ${zonePlacementGuide[s.zone] || 'On mannequin'}.`)
         .join('\n');
 
-      const prompt = `Use Reference Image #1 as the EXACT base mannequin (preserve its exact beige-linen headless torso proportions, slim light-oak stand, front camera angle, and warm cream studio backdrop).
+      const prompt = isDual
+        ? `Use Reference Image #1 as the EXACT Twin-Mannequin studio blueprint (TWO sculpted beige-linen articulated couture mannequins standing side-by-side on circular plinths labeled STYLE 01 on the left and STYLE 02 on the right, against the warm cream studio backdrop).
 
-Execute a strict two-stage garment shape normalization and multi-accessory assembly from the remaining reference images/boards:
+Execute a two-stage 1:1 garment normalization and Dual-Style Haute Lookbook styling:
 
 STAGE 1 — 1:1 GARMENT & ACCESSORY SHAPE NORMALIZATION:
-Extract every listed item (${selected.length} items total) from the reference images/labeled grids. Strip away any human body, hands, hangers, or background from the source photos, locking each item's exact 1:1 silhouette, neckline, sleeve/leg cut, fabric texture, and color shade:
+Extract every item (${selected.length} items total) from the reference boards. Remove any human body, hands, hangers, or background from source photos while preserving each item's exact 1:1 silhouette, neckline, collar, sleeve/leg cut, fabric texture, pattern, and color:
 ${normalizedBlock}
 
-STAGE 2 — COMPLETE MULTI-ACCESSORY ASSEMBLY ON THE BASE MANNEQUIN:
-Dress and position ALL ${selected.length} normalized items from Stage 1 onto/around the exact base mannequin from Reference Image #1 following their [ZONE] tags:
-- Every single listed item and accessory (${selected.map(s => s.it.name).join(', ')}) MUST be clearly visible in its designated anatomical zone.
-- Keep 100% fidelity to each garment's original shape, cut, wash, and details.
-- NO human, NO face, NO head, NO hair, NO hands, NO skin, NO unrequested items.`;
+STAGE 2 — DUAL-STYLE EDITORIAL STYLING ON THE TWIN MANNEQUINS (RULE OF THIRDS 1:2 & SILHOUETTE COUNTERBALANCE):
+Render BOTH mannequins side-by-side in one cohesive luxury lookbook frame, showcasing TWO distinct fashion styling variations:
+- ${stylingPlan.style1.instruction} (See Reference Image #2: STYLE 01 OUTFIT).
+- ${stylingPlan.style2.instruction} (See Reference Image #3: STYLE 02 OUTFIT).
+${stylingPlan.accessories.length ? `- Include all shared accessories (${stylingPlan.accessories.map(a => `"${a.it.name}" [${a.zone}]`).join(', ')}) positioned accurately on/around the mannequins.` : ''}
+- Keep faceless matte-linen couture mannequins with articulated arms and sculpted legs (NO human skin, NO real face, NO hair, NO extra unrequested clothing).`
+        : `Use Reference Image #1 as the EXACT articulated couture mannequin blueprint (preserve its matte beige-linen torso, articulated atelier arms, sculpted legs on the circular floor plinth, front camera angle, and warm cream studio backdrop).
+
+Execute a two-stage 1:1 garment shape normalization and fashion-theory styling assembly:
+
+STAGE 1 — 1:1 GARMENT & ACCESSORY SHAPE NORMALIZATION:
+Extract every listed item (${selected.length} items total) from the reference images/boards. Strip away any human body, hands, hangers, or background from source photos, locking each item's exact 1:1 silhouette, neckline, sleeve/leg cut, fabric texture, and color shade:
+${normalizedBlock}
+
+STAGE 2 — COUTURE STYLING & MULTI-ACCESSORY ASSEMBLY (RULE OF THIRDS 1:2 & VOLUME BALANCE):
+Dress ALL ${selected.length} normalized items from Stage 1 onto the articulated mannequin from Reference Image #1:
+- Fashion Styling Technique: ${stylingPlan.singleInstruction}.
+- Every single listed item (${selected.map(s => s.it.name).join(', ')}) MUST be clearly visible in its designated anatomical zone.
+- Trousers/shorts/skirts must drape naturally over the mannequin's sculpted hips and legs; sleeves must follow the articulated arms with natural fabric folds.
+- Keep faceless matte-linen couture mannequin (NO human face, NO real skin, NO hair, NO unrequested items).`;
 
       const dataUrl = await callMuseImage(prompt, refImages, elapsed => {
-        stage.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>Đang chuẩn hóa ${selected.length} món & ghép lên Ma-nơ-canh gốc (${elapsed}s)...`;
+        stage.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>${
+          isDual
+            ? `Đang chuẩn hóa ${selected.length} món & phối 2 Style song song (${elapsed}s)...`
+            : `Đang chuẩn hóa ${selected.length} món & lên phom Ma-nơ-canh (${elapsed}s)...`
+        }`;
       });
       lastAiDataUrl = dataUrl;
-      const imgEl = document.createElement('img');
-      imgEl.src = dataUrl;
-      imgEl.alt = 'Ảnh phối đồ AI';
-      stage.innerHTML = '';
-      stage.appendChild(imgEl);
-      toast('Đã tạo xong ảnh phối đồ');
+
+      const noteHtml = isDual
+        ? `<div class="ai-stylist-notes">
+            <div class="ai-style-chip"><strong>01</strong> <span>${esc(stylingPlan.style1.summaryVi.replace(/^Style 01 \(Trái[^:]*\):\s*/, ''))}</span></div>
+            <div class="ai-style-chip"><strong>02</strong> <span>${esc(stylingPlan.style2.summaryVi.replace(/^Style 02 \(Phải[^:]*\):\s*/, ''))}</span></div>
+          </div>`
+        : `<div class="ai-stylist-notes">
+            <div class="ai-style-chip"><strong><i class="fa-solid fa-feather-pointed" aria-hidden="true"></i></strong> <span>${esc(stylingPlan.summaryVi.replace(/^Tư duy Stylist:\s*/, ''))}</span></div>
+          </div>`;
+
+      stage.innerHTML = `<img src="${dataUrl}" alt="Ảnh phối đồ AI" />${noteHtml}`;
+      toast(isDual ? 'Đã tạo xong 2 Style phối đồ' : 'Đã tạo xong ảnh phối đồ');
     } catch (err) {
       stage.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="margin-right:6px" aria-hidden="true"></i>' + esc(err?.message || String(err));
       toast('Không tạo được ảnh: ' + (err?.message || err));
