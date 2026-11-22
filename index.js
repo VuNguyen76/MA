@@ -2012,17 +2012,11 @@ Dress ALL ${selected.length} normalized items from Stage 1 onto the articulated 
         }`;
       });
       lastAiDataUrl = dataUrl;
-
-      const noteHtml = isDual
-        ? `<div class="ai-stylist-notes">
-            <div class="ai-style-chip"><strong>01</strong> <span>${esc(stylingPlan.style1.summaryVi.replace(/^Style 01 \(Trái[^:]*\):\s*/, ''))}</span></div>
-            <div class="ai-style-chip"><strong>02</strong> <span>${esc(stylingPlan.style2.summaryVi.replace(/^Style 02 \(Phải[^:]*\):\s*/, ''))}</span></div>
-          </div>`
-        : `<div class="ai-stylist-notes">
-            <div class="ai-style-chip"><strong><i class="fa-solid fa-feather-pointed" aria-hidden="true"></i></strong> <span>${esc(stylingPlan.summaryVi.replace(/^Tư duy Stylist:\s*/, ''))}</span></div>
-          </div>`;
-
-      stage.innerHTML = `<img src="${dataUrl}" alt="Ảnh phối đồ AI" />${noteHtml}`;
+      const imgEl = document.createElement('img');
+      imgEl.src = dataUrl;
+      imgEl.alt = 'Ảnh phối đồ AI';
+      stage.innerHTML = '';
+      stage.appendChild(imgEl);
       toast(isDual ? 'Đã tạo xong 2 Style phối đồ' : 'Đã tạo xong ảnh phối đồ');
     } catch (err) {
       stage.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="margin-right:6px" aria-hidden="true"></i>' + esc(err?.message || String(err));
