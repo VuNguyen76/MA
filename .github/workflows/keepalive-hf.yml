@@ -9,6 +9,7 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping muse2api-gw healthz
+      - name: Ping HF Spaces healthz/login
         run: |
-          curl -sf --max-time 20 https://anhdagia0706-muse2api-gw.hf.space/healthz || echo "Wake-up ping sent"
+          curl -sf --max-time 20 https://anhdagia0706-muse2api-gw.hf.space/healthz || echo "Wake-up ping sent to muse2api-gw"
+          curl -sf --max-time 20 https://anhdagia0706-taskflow-app.hf.space/login > /dev/null || echo "Wake-up ping sent to taskflow-app"
