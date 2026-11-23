@@ -410,7 +410,7 @@ function syncLegacyBoard() {
   }
 }
 
-// Quy tắc giới hạn thông minh theo loại đồ (Phụ kiện & Túi xách: KHÔNG GIỚI HẠN)
+// Quy tắc giới hạn vật lý thông minh theo vùng cơ thể (Phụ kiện rời & Túi xách: KHÔNG GIỚI HẠN)
 function toggleItemSelection(id, forceAdd = false) {
   const it = items.find(x => x.id === id);
   if (!it) return;
@@ -425,24 +425,50 @@ function toggleItemSelection(id, forceAdd = false) {
   }
   if (idx !== -1) return;
 
-  const bottomGroup = ['Quần', 'Chân váy', 'Váy liền'];
-  if (bottomGroup.includes(it.cat)) {
+  const prof = classifyGarmentProfile(it);
+
+  if (prof.zone === 'LOWER' || prof.zone === 'DRESS') {
+    // Mỗi bộ chỉ mặc tối đa 1 Quần / Chân váy / Váy liền ở thân dưới
     selectedIds = selectedIds.filter(eid => {
       const e = items.find(x => x.id === eid);
-      return e && !bottomGroup.includes(e.cat);
+      if (!e) return false;
+      const ep = classifyGarmentProfile(e);
+      return ep.zone !== 'LOWER' && ep.zone !== 'DRESS';
     });
-  } else if (it.cat === 'Giày dép' || it.cat === 'Áo khoác') {
+  } else if (prof.zone === 'FOOT') {
     selectedIds = selectedIds.filter(eid => {
       const e = items.find(x => x.id === eid);
-      return e && e.cat !== it.cat;
+      return e && classifyGarmentProfile(e).zone !== 'FOOT';
     });
-  } else if (it.cat === 'Áo') {
-    const existingTops = selectedIds.filter(eid => items.find(x => x.id === eid)?.cat === 'Áo');
-    if (existingTops.length >= 2) {
-      selectedIds = selectedIds.filter(eid => eid !== existingTops[0]);
+  } else if (prof.zone === 'HEAD') {
+    // Phân biệt Nón/Mũ (CROWN) và Kính (EYE): không đội 2 cái nón chồng lên 1 đầu
+    const isEye = /kính|glass/.test((it.name || '').toLowerCase());
+    selectedIds = selectedIds.filter(eid => {
+      const e = items.find(x => x.id === eid);
+      if (!e) return false;
+      const ep = classifyGarmentProfile(e);
+      if (ep.zone !== 'HEAD') return true;
+      const eIsEye = /kính|glass/.test((e.name || '').toLowerCase());
+      return eIsEye !== isEye;
+    });
+  } else if (prof.role === 'CORSET_BELT' || prof.role === 'FAKE_COLLAR' || prof.role === 'OUTERWEAR') {
+    // Tối đa 1 Đai corset/thắt lưng, 1 Cổ áo giả, 1 Áo khoác ngoài
+    selectedIds = selectedIds.filter(eid => {
+      const e = items.find(x => x.id === eid);
+      return e && classifyGarmentProfile(e).role !== prof.role;
+    });
+  } else if (prof.zone === 'UPPER') {
+    // Các món áo thân trên (kể cả Cúp ngực, Áo xuyên thấu để trong mục Phụ kiện): tối đa 2 món để ghép lớp hoặc tách 2 Style
+    const existingUpperTops = selectedIds.filter(eid => {
+      const e = items.find(x => x.id === eid);
+      if (!e) return false;
+      const ep = classifyGarmentProfile(e);
+      return ep.zone === 'UPPER' && ep.role !== 'OUTERWEAR';
+    });
+    if (existingUpperTops.length >= 2) {
+      selectedIds = selectedIds.filter(eid => eid !== existingUpperTops[0]);
     }
   }
-  // 'Phụ kiện' & 'Túi xách' -> không giới hạn số lượng
 
   selectedIds.push(id);
   syncLegacyBoard();
@@ -584,7 +610,7 @@ function getItemZone(it) {
   return 'SIDE';
 }
 
-// Phân tích hồ sơ món đồ theo lý thuyết sách thời trang (The Curated Closet, Rule of Thirds, Layering Architecture)
+// Phân tích cấu trúc vật lý món đồ (Physical Topology: độ dài vạt áo, kiểu đóng/mở cúc, cổ áo, độ xuyên thấu)
 function classifyGarmentProfile(it) {
   const name = (it.name || '').toLowerCase();
   const note = (it.note || '').toLowerCase();
@@ -612,6 +638,26 @@ function classifyGarmentProfile(it) {
     role = 'CORSET_BELT';
   }
 
+  let hemType = 'STRAIGHT_UNTUCKED';
+  if (/cúp ngực|croptop|crop top/.test(name)) {
+    hemType = 'CROPPED';
+  } else if (/peplum|babydoll|đắp chéo|cột nơ|thắt eo|siết eo/.test(name)) {
+    hemType = 'SHAPED_WAIST_FLARE';
+  } else if (/sweater|oversize|giấu quần|đấu tuyển|blazer|cardigan|khoác|choàng/.test(name + ' ' + note)) {
+    hemType = 'LONG_HIP';
+  }
+
+  let closureType = 'CLOSED_PULLOVER';
+  if (/blazer|khoác|choàng|cardigan/.test(name)) {
+    closureType = 'OPEN_OUTER';
+  } else if (/sơ mi|caro|bóng chày|nút/.test(name) && !/cột nơ|tiểu thư|kiểu|đắp chéo|peplum/.test(name)) {
+    closureType = 'FRONT_BUTTON_PLACKET';
+  }
+
+  const isTransparent = role === 'SHEER_LAYER';
+  const hasCollar = /sơ mi|có cổ|golf|polo|bóng chày|blazer|cổ áo/.test(name);
+  const isStraplessBandeau = /cúp ngực|quây/.test(name);
+
   let volume = 'REGULAR';
   const cleanNote = note.replace(/ko nên mặc với quần rộng|không nên mặc với quần rộng/g, '');
   if (/ống rộng|oversize|rộng|babydoll|giấu quần|túi hộp|voan/.test(name + ' ' + cleanNote)) {
@@ -621,7 +667,7 @@ function classifyGarmentProfile(it) {
   }
 
   let directive = '';
-  if (/đóng thùng|chặt thùng/.test(note)) {
+  if (/đóng thùng|chặt thùng/.test(note) && hemType !== 'SHAPED_WAIST_FLARE' && hemType !== 'CROPPED') {
     directive = 'FULL_TUCK';
   } else if (/giấu quần/.test(note)) {
     directive = 'BOYFRIEND_UNTUCKED';
@@ -633,7 +679,7 @@ function classifyGarmentProfile(it) {
     directive = 'ATHLEISURE';
   }
 
-  return { zone, role, volume, directive };
+  return { zone, role, hemType, closureType, isTransparent, hasCollar, isStraplessBandeau, volume, directive };
 }
 
 function selectedPieces() {
@@ -653,8 +699,12 @@ function updateMixCount() {
   const x = $('mixCount');
   if (!x) return;
   const sel = selectedPieces();
-  const upperCount = sel.filter(s => s.zone === 'UPPER').length;
-  x.textContent = upperCount >= 2 ? `${sel.length} món · 2 Style` : `${sel.length} món`;
+  if (!sel.length) {
+    x.textContent = '0 món';
+    return;
+  }
+  const plan = buildFashionStylingPlan(sel);
+  x.textContent = plan.mode === 'DUAL_STYLE' ? `${sel.length} món · 2 Style` : `${sel.length} món`;
 }
 
 // Bố cục Flat-lay tự nhiên như bản cũ + Vật lý tự đẩy nhau (Force-Directed Repulsion) để không bao giờ đè lên nhau và luôn nằm trọn trong Canvas
@@ -1650,163 +1700,287 @@ function getAdaptiveMannequinDataUrl(selected, stylingPlan) {
   return c.toDataURL('image/png');
 }
 
-// Tư duy thời trang từ sách styling (The Curated Closet, Rule of Thirds 1:2, Volume Counterbalance, Layering Theory)
-function buildSingleGarmentStylingRule(piece, bottomPiece) {
-  const { role, volume, directive } = piece.profile;
-  const bottomVol = bottomPiece?.profile?.volume || 'REGULAR';
-  const rules = [];
+// Mô tả quy tắc ghép vạt áo vật lý 1:1 (Physical Hemline & Z-Layer Overlap — KHÔNG tự ý nhét áo vào quần hay bẻ biến dạng phom gốc)
+function describePhysicalHemline(topPiece, lowerPiece) {
+  const { hemType, directive } = topPiece.profile;
+  const topName = `"${topPiece.it.name}"`;
+  const lowerName = lowerPiece ? `"${lowerPiece.it.name}"` : null;
 
-  if (directive === 'FULL_TUCK') {
-    rules.push('Full tailored tuck into the high-waisted waistband (honoring item note: đóng/chặt thùng) to establish a crisp 1:2 Rule-of-Thirds leg-lengthening line');
-  } else if (directive === 'BOYFRIEND_UNTUCKED') {
-    rules.push('Relaxed boyfriend untucked drape covering the upper hip (2:1 street proportion as noted: mặc giấu quần)');
-  } else if (directive === 'WAIST_CINCH' || role === 'STATEMENT_TOP') {
-    rules.push('Sculpted waist-cinched fit accentuating the narrowest 1/3 natural waist point');
-  } else if (role === 'BUTTON_SHIRT') {
-    if (volume === 'OVERSIZED' && bottomVol === 'OVERSIZED') {
-      rules.push('Asymmetric French tuck (half-tuck front hem into waistband) + roll sleeves to mid-forearm + unbutton top 2 collar buttons to prevent oversized-on-oversized bulk');
-    } else {
-      rules.push('Crisp French tuck at the front waist with sleeves neatly cuffed to mid-forearm and collar framed cleanly');
-    }
-  } else if (volume === 'OVERSIZED' && bottomVol === 'OVERSIZED') {
-    rules.push('Structured French front-tuck at the high waist to counterbalance the wide-leg bottom silhouette');
-  } else {
-    rules.push('Clean 1:2 Rule-of-Thirds waist transition aligned neatly with the bottom waistband');
+  if (hemType === 'CROPPED') {
+    return `${topName} is a cropped/bandeau piece: preserve 100% of its exact photographed cropped length so its bottom edge ends naturally at the ribcage/upper waist${lowerName ? `, right above or touching the top waistband of ${lowerName} without covering the pants` : ''}.`;
+  }
+  if (hemType === 'SHAPED_WAIST_FLARE') {
+    return `${topName} has a structured peplum/wrap/babydoll hem: NEVER tuck it inside pants. Its flared/shaped bottom hem MUST sit on the exterior (z-layer 2) overlapping the top waistband${lowerName ? ` of ${lowerName}` : ''} with a clean 3D fabric edge.`;
+  }
+  if (directive === 'FULL_TUCK' && lowerName) {
+    return `${topName} has an explicit tuck directive in user notes: tuck its bottom hem cleanly inside the high waistband of ${lowerName} while keeping its exact upper torso cut, collar, and sleeve length unchanged.`;
+  }
+  return `STRICT 1:1 UNTUCKED PHYSICAL OVERLAP FOR ${topName}: Keep ${topName} 100% UNTUCKED in its exact original photographed shape, length, closure, sleeve cut, and bottom hemline. Its bottom hem MUST hang naturally OUTSIDE and OVER ${lowerName ? `the top waistband of ${lowerName} (overlapping the top ~5-8cm of the waistband on the exterior z-layer with a clear fabric hem edge and subtle contact shadow — NEVER stuff or tuck it inside ${lowerName} and NEVER merge them into a one-piece jumpsuit)` : 'the bare beige-linen mannequin waist'}. Do NOT tie knots, do NOT roll sleeves, and do NOT unbutton closed plackets.`;
+}
+
+// Kiểm tra 2 món thân trên có thể ghép chồng vật lý trên CÙNG 1 Ma-nơ-canh mà không biến dạng & không che khuất 100% nhau hay không
+function checkPhysicalStackability(u1, u2) {
+  const p1 = u1.profile;
+  const p2 = u2.profile;
+
+  // 1. Một món là lớp lưới/xuyên thấu (SHEER_LAYER) + Một món là áo đặc bên trong -> Ghép 2 lớp trực tiếp trên 1 Ma-nơ-canh
+  if (p1.isTransparent !== p2.isTransparent) {
+    const inner = p1.isTransparent ? u2 : u1;
+    const outer = p1.isTransparent ? u1 : u2;
+    return {
+      canStackOnOne: true,
+      inner,
+      outer,
+      assemblyRule: `Layer z=2 (Inner Base): Put "${inner.it.name}" onto the mannequin torso in its exact 1:1 photographed shape. Layer z=3 (Sheer Exterior Overlay): Layer the transparent/mesh "${outer.it.name}" directly OVER "${inner.it.name}" in its exact 1:1 cropped/mesh shape so "${inner.it.name}" remains clearly visible underneath and through the sheer fabric without altering either garment's cut.`
+    };
   }
 
-  return rules.join('; ');
+  // 2. Một món là Áo khoác mở vạt (Blazer, Cardigan, Áo khoác, Áo choàng) + Một món là Áo mặc trong -> Ghép 2 lớp trực tiếp trên 1 Ma-nơ-canh
+  const isOpenCoat1 = p1.role === 'OUTERWEAR' && p1.closureType === 'OPEN_OUTER';
+  const isOpenCoat2 = p2.role === 'OUTERWEAR' && p2.closureType === 'OPEN_OUTER';
+  if (isOpenCoat1 !== isOpenCoat2) {
+    const inner = isOpenCoat1 ? u2 : u1;
+    const outer = isOpenCoat1 ? u1 : u2;
+    return {
+      canStackOnOne: true,
+      inner,
+      outer,
+      assemblyRule: `Layer z=2 (Inner Top): Dress the mannequin torso in "${inner.it.name}" keeping 100% of its photographed shape. Layer z=3 (Exterior Open Outerwear): Put "${outer.it.name}" onto the shoulders and articulated arms OVER "${inner.it.name}" with an open front so the center torso of "${inner.it.name}" is clearly visible between the lapels.`
+    };
+  }
+
+  // 3. Một món là Sweater chui đầu (CLOSED_PULLOVER OUTERWEAR) + Một món là Sơ mi có cổ (hasCollar) -> Mặc sơ mi bên trong lộ cổ áo & vạt dưới
+  const isPulloverCoat1 = p1.role === 'OUTERWEAR' && p1.closureType === 'CLOSED_PULLOVER';
+  const isPulloverCoat2 = p2.role === 'OUTERWEAR' && p2.closureType === 'CLOSED_PULLOVER';
+  if (isPulloverCoat1 !== isPulloverCoat2) {
+    const inner = isPulloverCoat1 ? u2 : u1;
+    const outer = isPulloverCoat1 ? u1 : u2;
+    if (inner.profile.hasCollar) {
+      return {
+        canStackOnOne: true,
+        inner,
+        outer,
+        assemblyRule: `Layer z=2 (Inner Collared Shirt): Dress "${inner.it.name}" underneath. Layer z=3 (Exterior Pullover Sweater): Layer "${outer.it.name}" over the torso in its exact 1:1 boxy pullover shape, allowing ONLY the collar of "${inner.it.name}" to peek out cleanly at the neck opening and the bottom hem of "${inner.it.name}" to peek out ~3cm below the sweater hem.`
+      };
+    }
+  }
+
+  return { canStackOnOne: false };
+}
+
+// Lắp ráp ngăn xếp vật lý từ lớp trong ra lớp ngoài cho 1 Ma-nơ-canh (z=1 Quần/Váy -> z=2 Áo trong -> z=3 Lớp phủ/Khoác/Đai -> z=4 Phụ kiện)
+function buildMannequinPhysicalStackInstruction(label, upperItems, lowerPiece, dressPiece, footwearPiece, accessories, customLayerRule = '') {
+  const steps = [];
+
+  if (dressPiece) {
+    steps.push(`Layer z=1 (Full-Body Dress): Fit "${dressPiece.it.name}" onto the mannequin torso, waist, and hips in its exact 1:1 photographed length and neckline.`);
+  } else if (lowerPiece) {
+    steps.push(`Layer z=1 (Lower Body Base): Fit "${lowerPiece.it.name}" onto the mannequin waist, hips, and sculpted legs in its exact 1:1 photographed cut, rise, and leg width.`);
+  } else {
+    steps.push('NO LOWER GARMENT SELECTED: Leave the mannequin lower beige-linen hips and sculpted legs completely BARE and undressed below the top hem. Do NOT invent or add any pants, jeans, shorts, or skirt.');
+  }
+
+  if (upperItems.length === 0 && !dressPiece) {
+    steps.push('NO UPPER GARMENT SELECTED: Leave the mannequin upper beige-linen chest, shoulders, and articulated arms completely BARE and undressed above the waistband. Do NOT invent or add any shirt or top.');
+  } else if (customLayerRule) {
+    steps.push(customLayerRule);
+    for (const u of upperItems) {
+      steps.push(describePhysicalHemline(u, lowerPiece || dressPiece));
+    }
+  } else {
+    upperItems.forEach((u, idx) => {
+      steps.push(`Layer z=${idx + 2} (Upper Body): Assemble "${u.it.name}" onto the mannequin torso and articulated arms in its exact 1:1 photographed shape. ${describePhysicalHemline(u, lowerPiece || dressPiece)}`);
+    });
+  }
+
+  // Kiểm tra vật lý của Cổ áo giả (chỉ gắn vào áo không cổ) và Đai corset (luôn nằm ở lớp ngoài cùng tại eo z=4)
+  const hasCollaredUpper = upperItems.some(u => u.profile.hasCollar);
+  for (const acc of accessories) {
+    if (acc.profile.role === 'FAKE_COLLAR') {
+      if (!hasCollaredUpper && (upperItems.length > 0 || dressPiece)) {
+        steps.push(`Layer z=1.5 (Inner Neckline Collar): Tuck "${acc.it.name}" inside the collarless neckline so only its crisp shirt collar points peek out naturally at the neck.`);
+      } else {
+        steps.push(`Accessory "${acc.it.name}": Display neatly beside the mannequin plinth (do not stack a second collar onto an already-collared shirt).`);
+      }
+    } else if (acc.profile.role === 'CORSET_BELT') {
+      steps.push(`Layer z=4 (Exterior Waist Cincher): Fasten "${acc.it.name}" snugly around the narrowest natural waist ON THE EXTERIOR OVER the top/dress in its exact 1:1 shape.`);
+    }
+  }
+
+  if (footwearPiece) {
+    steps.push(`Footwear: Place "${footwearPiece.it.name}" cleanly at the mannequin ankles on the studio plinth.`);
+  }
+
+  return `${label}: ${steps.join(' ')}`;
 }
 
 function buildFashionStylingPlan(selected) {
-  const uppers = selected.filter(s => s.zone === 'UPPER');
-  const lowers = selected.filter(s => s.zone === 'LOWER' || s.zone === 'DRESS');
+  const allUppers = selected.filter(s => s.zone === 'UPPER');
+  const dresses = selected.filter(s => s.zone === 'DRESS');
+  const lowers = selected.filter(s => s.zone === 'LOWER');
   const footwear = selected.filter(s => s.zone === 'FOOT');
   const accessories = selected.filter(s => !['UPPER', 'LOWER', 'DRESS', 'FOOT'].includes(s.zone));
+
   const primaryBottom = lowers[0] || null;
+  const primaryDress = dresses[0] || null;
+  const primaryFoot = footwear[0] || null;
 
-  // KHI CÓ TỪ 2 MÓN THÂN TRÊN TRỞ LÊN: Tự động kích hoạt Tư duy 2 Style (Dual-Mannequin Editorial Lookbook)
-  if (uppers.length >= 2) {
-    const [u1, u2, ...restUppers] = uppers;
-    const r1 = u1.profile.role;
-    const r2 = u2.profile.role;
+  const coats = allUppers.filter(s => s.profile.role === 'OUTERWEAR');
+  const nonCoatUppers = allUppers.filter(s => s.profile.role !== 'OUTERWEAR');
 
-    const isBase = r => r === 'BASE_TOP' || r === 'CORE_TOP';
-    const isOuterOrShirt = r => r === 'BUTTON_SHIRT' || r === 'OUTERWEAR' || r === 'SHEER_LAYER';
+  // TRƯỜNG HỢP 1: Có đúng 2 món thân trên -> Kiểm tra xem chúng có ghép chồng vật lý thành 1 bộ được không hay phải tách 2 Ma-nơ-canh
+  if (allUppers.length === 2) {
+    const [u1, u2] = allUppers;
+    const stackCheck = checkPhysicalStackability(u1, u2);
 
-    let canLayerTogether = false;
-    let innerPiece = u1;
-    let outerPiece = u2;
-
-    if (isBase(r1) && isOuterOrShirt(r2)) {
-      canLayerTogether = true;
-      innerPiece = u1;
-      outerPiece = u2;
-    } else if (isBase(r2) && isOuterOrShirt(r1)) {
-      canLayerTogether = true;
-      innerPiece = u2;
-      outerPiece = u1;
-    } else if (r1 === 'SHEER_LAYER' || r2 === 'SHEER_LAYER') {
-      canLayerTogether = true;
-      innerPiece = r1 === 'SHEER_LAYER' ? u2 : u1;
-      outerPiece = r1 === 'SHEER_LAYER' ? u1 : u2;
-    } else if (r1 === 'OUTERWEAR' || r2 === 'OUTERWEAR') {
-      canLayerTogether = true;
-      innerPiece = r1 === 'OUTERWEAR' ? u2 : u1;
-      outerPiece = r1 === 'OUTERWEAR' ? u1 : u2;
-    }
-
-    // Trường hợp A: 2 áo có thể phối Layering với nhau -> Tạo 2 biến tấu Layering khác biệt trên 2 Ma-nơ-canh
-    if (canLayerTogether) {
-      const outerRole = outerPiece.profile.role;
-      let style1Instruction = '';
-      let style2Instruction = '';
-      let style1Vi = '';
-      let style2Vi = '';
-
-      if (outerRole === 'BUTTON_SHIRT') {
-        style1Instruction = `LEFT MANNEQUIN (STYLE 01 — Effortless Open-Overshirt Layering, 1:2 Proportion): Wear "${innerPiece.it.name}" as a sleek fitted inner base tucked/aligned at the high waist; layer "${outerPiece.it.name}" COMPLETELY UNBUTTONED as a breezy open overshirt with sleeves rolled neatly to mid-forearm.`;
-        style2Instruction = `RIGHT MANNEQUIN (STYLE 02 — Sculpted Waist-Knot / French-Tuck Layering): Wear "${innerPiece.it.name}" underneath peeking cleanly at the V-neckline; style "${outerPiece.it.name}" HALF-BUTTONED and KNOTTED/TIED at the natural 1/3 waist (or asymmetric one-side French tuck) to cinch an hourglass X-silhouette.`;
-        style1Vi = `Style 01 (Trái): "${innerPiece.it.name}" mặc trong ôm gọn + "${outerPiece.it.name}" mở cúc khoác ngoài phóng khoáng, xắn tay 1/3 cẳng tay.`;
-        style2Vi = `Style 02 (Phải): "${outerPiece.it.name}" buộc vạt/sơ vin lệch (French Tuck) chiết eo cao 1:2 trên nền "${innerPiece.it.name}".`;
-      } else if (outerRole === 'SHEER_LAYER') {
-        style1Instruction = `LEFT MANNEQUIN (STYLE 01 — High-Contrast Cropped Overlay): Wear "${innerPiece.it.name}" as the clean structured base layer (neatly tucked if long), and layer the sheer/mesh "${outerPiece.it.name}" directly OVER it to create a sharp 1/3 cropped waist division and rich texture contrast.`;
-        style2Instruction = `RIGHT MANNEQUIN (STYLE 02 — Asymmetric Off-Shoulder Editorial Layering): Pair "${innerPiece.it.name}" and "${outerPiece.it.name}" with an effortless off-one-shoulder drape and relaxed waist styling for soft editorial movement.`;
-        style1Vi = `Style 01 (Trái): Phối lớp tương phản chất liệu — "${innerPiece.it.name}" làm nền + "${outerPiece.it.name}" phủ ngoài phân tách tỉ lệ eo 1:2.`;
-        style2Vi = `Style 02 (Phải): Biến tấu trễ nhẹ một bên vai / thả phom bất đối xứng mềm mại giữa "${outerPiece.it.name}" và "${innerPiece.it.name}".`;
-      } else {
-        style1Instruction = `LEFT MANNEQUIN (STYLE 01 — Tailored Worn-On Layering): Wear "${innerPiece.it.name}" neatly tucked at the 1/3 waist line, with "${outerPiece.it.name}" worn properly on the arms, open-front/unbuttoned, cuffs pushed slightly to reveal wrist proportion.`;
-        style2Instruction = `RIGHT MANNEQUIN (STYLE 02 — Parisian Shoulder-Drape Editorial): Showcase "${innerPiece.it.name}" defining the full waist silhouette while draping "${outerPiece.it.name}" effortlessly over the shoulders like a couture editorial cape.`;
-        style1Vi = `Style 01 (Trái): Layering chuẩn mực — "${innerPiece.it.name}" sơ vin gọn tôn eo 1:2, mặc "${outerPiece.it.name}" mở cúc thanh lịch.`;
-        style2Vi = `Style 02 (Phải): Phong cách Parisian Chic — Khoác hờ "${outerPiece.it.name}" trên cầu vai để khoe trọn phom eo của "${innerPiece.it.name}".`;
-      }
-
-      const sharedMain = [...lowers, ...footwear, ...restUppers];
+    // Nếu 2 món thực chất là 1 lớp trong + 1 lớp ngoài tương thích vật lý (VD: Áo + Áo khoác mở, Áo + Áo lưới xuyên thấu, Sơ mi có cổ + Sweater) -> Ghép chuẩn 1:1 trên 1 Ma-nơ-canh!
+    if (stackCheck.canStackOnOne) {
+      const orderedUppers = [stackCheck.inner, stackCheck.outer];
+      const singleInstruction = buildMannequinPhysicalStackInstruction(
+        'SINGLE MANNEQUIN 1:1 PHYSICAL LAYERED ASSEMBLY',
+        orderedUppers,
+        primaryBottom,
+        primaryDress,
+        primaryFoot,
+        accessories,
+        stackCheck.assemblyRule
+      );
       return {
-        mode: 'DUAL_STYLE',
-        subMode: 'DUAL_LAYERING_VARIATIONS',
-        style1: {
-          title: 'STYLE 01 (LEFT MANNEQUIN)',
-          mainPieces: [innerPiece, outerPiece, ...sharedMain],
-          instruction: style1Instruction,
-          summaryVi: style1Vi
-        },
-        style2: {
-          title: 'STYLE 02 (RIGHT MANNEQUIN)',
-          mainPieces: [innerPiece, outerPiece, ...sharedMain],
-          instruction: style2Instruction,
-          summaryVi: style2Vi
-        },
+        mode: 'SINGLE_STYLE',
+        singleInstruction,
         accessories
       };
     }
 
-    // Trường hợp B: 2 áo độc lập (VD: 2 áo sơ mi, hoặc áo sơ mi + áo đắp chéo/peplum/babydoll) -> Không nhồi chồng lên 1 người mà tách thành 2 Look A/B song song
-    const rule1 = buildSingleGarmentStylingRule(u1, primaryBottom);
-    const rule2 = buildSingleGarmentStylingRule(u2, primaryBottom);
-    const sharedMain = [...lowers, ...footwear, ...restUppers];
+    // Nếu là 1 Áo nền (Cúp ngực / Áo 2s / Áo ba lỗ) + 1 Áo sơ mi cài cúc trước (FRONT_BUTTON_PLACKET):
+    // Tạo 2 cách ghép vật lý hợp lệ trên 2 Ma-nơ-canh mà KHÔNG làm biến dạng phom áo (không buộc vạt, không xắn tay, không nhét vào quần)
+    const isBase1 = u1.profile.role === 'BASE_TOP' && u2.profile.closureType === 'FRONT_BUTTON_PLACKET';
+    const isBase2 = u2.profile.role === 'BASE_TOP' && u1.profile.closureType === 'FRONT_BUTTON_PLACKET';
+    if (isBase1 || isBase2) {
+      const baseTop = isBase1 ? u1 : u2;
+      const shirtTop = isBase1 ? u2 : u1;
+      const sharedLowerAndFoot = [primaryBottom, primaryDress, primaryFoot].filter(Boolean);
+
+      const style1Rule = `Layer z=2 (Inner Base): Fit "${baseTop.it.name}" onto the mannequin bust in its exact 1:1 shape. Layer z=3 (Exterior Open-Placket Overshirt): Wear "${shirtTop.it.name}" OVER "${baseTop.it.name}" with ONLY its front vertical button placket open so "${baseTop.it.name}" is visible in the center — preserve 100% of "${shirtTop.it.name}"'s exact sleeve length, collar, and straight UNTUCKED bottom hemline (NO waist knots, NO rolled sleeves, NO tucking).`;
+      const style1Inst = buildMannequinPhysicalStackInstruction(
+        'LEFT MANNEQUIN (STYLE 01 — Open-Placket Physical Layering)',
+        [baseTop, shirtTop],
+        primaryBottom,
+        primaryDress,
+        primaryFoot,
+        accessories,
+        style1Rule
+      );
+
+      let style2Inst = '';
+      let style2Pieces = [];
+      if (baseTop.profile.isStraplessBandeau) {
+        // Cúp ngực không dây + Sơ mi đóng cúc: Ghép Cúp ngực ôm bên ngoài sơ mi đóng cúc (Bustier-over-Shirt 1:1)
+        const style2Rule = `Layer z=2 (Inner Closed Shirt): Dress "${shirtTop.it.name}" in its exact 1:1 photographed buttoned-up shape with its untucked bottom hem hanging naturally over the waistband. Layer z=3 (Exterior Bustier Overlay): Fit the strapless bandeau "${baseTop.it.name}" cleanly around the exterior mid-bust OVER "${shirtTop.it.name}" keeping 100% of both garments' original shapes.`;
+        style2Inst = buildMannequinPhysicalStackInstruction(
+          'RIGHT MANNEQUIN (STYLE 02 — Exterior Bandeau-Over-Closed-Shirt Physical Assembly)',
+          [shirtTop, baseTop],
+          primaryBottom,
+          primaryDress,
+          primaryFoot,
+          accessories,
+          style2Rule
+        );
+        style2Pieces = [shirtTop, baseTop, ...sharedLowerAndFoot];
+      } else {
+        // Áo 2 dây / ba lỗ + Sơ mi đóng cúc: Tách riêng Sơ mi đóng cúc nguyên bản ở Style 02
+        style2Inst = buildMannequinPhysicalStackInstruction(
+          `RIGHT MANNEQUIN (STYLE 02 — Exact Closed "${shirtTop.it.name}" Standalone Assembly, do NOT put "${baseTop.it.name}" on Right Mannequin)`,
+          [shirtTop],
+          primaryBottom,
+          primaryDress,
+          primaryFoot,
+          accessories
+        );
+        style2Pieces = [shirtTop, ...sharedLowerAndFoot];
+      }
+
+      return {
+        mode: 'DUAL_STYLE',
+        subMode: 'PHYSICAL_LAYERING_DUET',
+        style1: {
+          title: 'STYLE 01 (LEFT MANNEQUIN)',
+          mainPieces: [baseTop, shirtTop, ...sharedLowerAndFoot],
+          instruction: style1Inst
+        },
+        style2: {
+          title: 'STYLE 02 (RIGHT MANNEQUIN)',
+          mainPieces: style2Pieces,
+          instruction: style2Inst
+        },
+        accessories
+      };
+    }
+  }
+
+  // TRƯỜNG HỢP 2: Có 2 Áo độc lập xung đột vật lý (VD: 2 áo sơ mi, 2 áo thun/polo, áo sơ mi + áo trễ vai/peplum/babydoll/đắp chéo, hoặc 2 áo + 1 áo khoác)
+  // -> Tách thành 2 Ma-nơ-canh song song (STYLE 01 mặc Áo 1 nguyên bản, STYLE 02 mặc Áo 2 nguyên bản, giữ nguyên vạt áo phủ tự nhiên ngoài cạp quần)
+  if (nonCoatUppers.length >= 2 || allUppers.length >= 2) {
+    const [top1, top2] = nonCoatUppers.length >= 2 ? nonCoatUppers : allUppers;
+    const sharedCoat = coats[0] && coats[0] !== top1 && coats[0] !== top2 ? coats[0] : null;
+    const sharedLowerAndFoot = [primaryBottom, primaryDress, primaryFoot].filter(Boolean);
+
+    const stack1 = sharedCoat ? [top1, sharedCoat] : [top1];
+    const stack2 = sharedCoat ? [top2, sharedCoat] : [top2];
+
+    const check1 = sharedCoat ? checkPhysicalStackability(top1, sharedCoat) : { canStackOnOne: false };
+    const check2 = sharedCoat ? checkPhysicalStackability(top2, sharedCoat) : { canStackOnOne: false };
+
+    const style1Inst = buildMannequinPhysicalStackInstruction(
+      `LEFT MANNEQUIN (STYLE 01 — Physical 1:1 Assembly featuring ONLY "${top1.it.name}" on upper torso, NEVER put "${top2.it.name}" on Left Mannequin)`,
+      stack1,
+      primaryBottom,
+      primaryDress,
+      primaryFoot,
+      accessories,
+      check1.canStackOnOne ? check1.assemblyRule : ''
+    );
+
+    const style2Inst = buildMannequinPhysicalStackInstruction(
+      `RIGHT MANNEQUIN (STYLE 02 — Physical 1:1 Assembly featuring ONLY "${top2.it.name}" on upper torso, NEVER put "${top1.it.name}" on Right Mannequin)`,
+      stack2,
+      primaryBottom,
+      primaryDress,
+      primaryFoot,
+      accessories,
+      check2.canStackOnOne ? check2.assemblyRule : ''
+    );
 
     return {
       mode: 'DUAL_STYLE',
       subMode: 'CAPSULE_AB_LOOKS',
       style1: {
         title: 'STYLE 01 (LEFT MANNEQUIN — LOOK A)',
-        mainPieces: [u1, ...sharedMain],
-        instruction: `LEFT MANNEQUIN (STYLE 01 — Look A featuring ONLY "${u1.it.name}" on upper body, do NOT put "${u2.it.name}" on Left Mannequin): Dress Left Mannequin in "${u1.it.name}" paired with ${lowers.map(l => `"${l.it.name}"`).join(', ') || 'the lower garment'}. Styling technique: ${rule1}.`,
-        summaryVi: `Style 01 (Trái — Look A): Phối "${u1.it.name}" theo phom riêng (${u1.profile.directive === 'FULL_TUCK' ? 'đóng thùng gọn 1:2' : (u1.profile.volume === 'FITTED' ? 'ôm chiết eo tôn dáng' : 'sơ vin vạt trước French Tuck cân bằng tỉ lệ')}).`
+        mainPieces: [...stack1, ...sharedLowerAndFoot],
+        instruction: style1Inst
       },
       style2: {
         title: 'STYLE 02 (RIGHT MANNEQUIN — LOOK B)',
-        mainPieces: [u2, ...sharedMain],
-        instruction: `RIGHT MANNEQUIN (STYLE 02 — Look B featuring ONLY "${u2.it.name}" on upper body, do NOT put "${u1.it.name}" on Right Mannequin): Dress Right Mannequin in "${u2.it.name}" paired with ${lowers.map(l => `"${l.it.name}"`).join(', ') || 'the lower garment'}. Styling technique: ${rule2}.`,
-        summaryVi: `Style 02 (Phải — Look B): Biến tấu sang "${u2.it.name}" trên cùng nền quần/phụ kiện (${u2.profile.directive === 'BOYFRIEND_UNTUCKED' ? 'thả vạt phóng khoáng 2:1' : (u2.profile.role === 'STATEMENT_TOP' ? 'nhấn eo chữ X chuẩn tỉ lệ vàng' : 'biến tấu cổ và tay áo thanh thoát')}).`
+        mainPieces: [...stack2, ...sharedLowerAndFoot],
+        instruction: style2Inst
       },
       accessories
     };
   }
 
-  // CHẾ ĐỘ 1 STYLE (SINGLE MANNEQUIN) VỚI TƯ DUY SÁCH THỜI TRANG
-  const topPiece = uppers[0] || null;
-  const singleRule = topPiece
-    ? buildSingleGarmentStylingRule(topPiece, primaryBottom)
-    : 'Balanced 1:2 Rule-of-Thirds couture drape with clean waist definition';
-
-  let summaryVi = 'Tỉ lệ vàng 1:2 (Rule of Thirds) · Chuẩn hóa phom thực tế & cân bằng độ phồng trên/dưới.';
-  if (topPiece && primaryBottom) {
-    if (topPiece.profile.directive === 'FULL_TUCK') {
-      summaryVi = `Tư duy Stylist: Đóng thùng gọn "${topPiece.it.name}" vào "${primaryBottom.it.name}" theo đúng ghi chú món đồ để kéo dài chân tỉ lệ 1:2.`;
-    } else if (topPiece.profile.directive === 'BOYFRIEND_UNTUCKED') {
-      summaryVi = `Tư duy Stylist: Thả vạt "${topPiece.it.name}" tự nhiên theo phong cách Boyfriend 2:1 đúng ghi chú món đồ.`;
-    } else if (topPiece.profile.volume === 'OVERSIZED' && primaryBottom.profile.volume === 'OVERSIZED') {
-      summaryVi = `Tư duy Stylist: Áo và quần đều phom rộng — tự động sơ vin nửa vạt trước (French Tuck) và xắn nhẹ tay áo để mở khóa vòng eo 1/3.`;
-    } else {
-      summaryVi = `Tư duy Stylist: Cân bằng phom "${topPiece.it.name}" (${topPiece.profile.volume === 'FITTED' ? 'ôm gọn' : 'thoải mái'}) cùng "${primaryBottom.it.name}" theo tỉ lệ 1:2.`;
-    }
-  }
+  // TRƯỜNG HỢP 3: Bộ đơn chuẩn (0 hoặc 1 món thân trên + Quần/Váy + Phụ kiện) -> Ghép vật lý 1:1 trên 1 Ma-nơ-canh
+  const singleInstruction = buildMannequinPhysicalStackInstruction(
+    'SINGLE MANNEQUIN 1:1 PHYSICAL GARMENT ASSEMBLY',
+    allUppers,
+    primaryBottom,
+    primaryDress,
+    primaryFoot,
+    accessories
+  );
 
   return {
     mode: 'SINGLE_STYLE',
-    singleInstruction: singleRule,
-    summaryVi,
+    singleInstruction,
     accessories
   };
 }
@@ -1977,32 +2151,30 @@ if ($('aiGenerateBtn')) {
       const prompt = isDual
         ? `Use Reference Image #1 as the EXACT Twin-Mannequin studio blueprint (TWO sculpted beige-linen articulated couture mannequins standing side-by-side on circular plinths labeled STYLE 01 on the left and STYLE 02 on the right, against the warm cream studio backdrop).
 
-Execute a two-stage 1:1 garment normalization and Dual-Style Haute Lookbook styling:
+Execute a strict two-stage 1:1 garment shape normalization and physical z-layer garment assembly:
 
-STAGE 1 — 1:1 GARMENT & ACCESSORY SHAPE NORMALIZATION:
-Extract every item (${selected.length} items total) from the reference boards. Remove any human body, hands, hangers, or background from source photos while preserving each item's exact 1:1 silhouette, neckline, collar, sleeve/leg cut, fabric texture, pattern, and color:
+STAGE 1 — 1:1 IMMUTABLE GARMENT SHAPE & HEMLINE EXTRACTION:
+Extract every item (${selected.length} items total) from the reference boards. Remove any human body, hands, hangers, or background from source photos while locking 100% of each item's exact photographed silhouette, neckline, collar, closure state, sleeve/leg length, bottom hemline contour, fabric texture, and color:
 ${normalizedBlock}
 
-STAGE 2 — DUAL-STYLE EDITORIAL STYLING ON THE TWIN MANNEQUINS (RULE OF THIRDS 1:2 & SILHOUETTE COUNTERBALANCE):
-Render BOTH mannequins side-by-side in one cohesive luxury lookbook frame, showcasing TWO distinct fashion styling variations:
-- ${stylingPlan.style1.instruction} (See Reference Image #2: STYLE 01 OUTFIT).
-- ${stylingPlan.style2.instruction} (See Reference Image #3: STYLE 02 OUTFIT).
-${stylingPlan.accessories.length ? `- Include all shared accessories (${stylingPlan.accessories.map(a => `"${a.it.name}" [${a.zone}]`).join(', ')}) positioned accurately on/around the mannequins.` : ''}
-- Keep faceless matte-linen couture mannequins with articulated arms and sculpted legs (NO human skin, NO real face, NO hair, NO extra unrequested clothing).`
+STAGE 2 — STRICT PHYSICAL Z-LAYER ASSEMBLY ON THE TWIN MANNEQUINS (DO NOT DEFORM GARMENTS OR INVENT MISSING CLOTHES):
+Assemble the extracted garments from Stage 1 directly onto the Twin Mannequins according to real physical wearing order (inner z-layer first, outer z-layer overlapping on top):
+- ${stylingPlan.style1.instruction} (Reference Image #2: STYLE 01 OUTFIT).
+- ${stylingPlan.style2.instruction} (Reference Image #3: STYLE 02 OUTFIT).
+${stylingPlan.accessories.length ? `- Shared Accessories: Position ${stylingPlan.accessories.map(a => `"${a.it.name}" [${a.zone}]`).join(', ')} accurately in their physical zones.` : ''}
+- CRITICAL PHYSICAL FIDELITY: Do NOT modify any garment's cut, do NOT tie fake knots, do NOT roll sleeves, do NOT stuff untucked tops inside pants, and do NOT invent any unrequested clothing on bare mannequin zones. Keep faceless matte-linen couture mannequins.`
         : `Use Reference Image #1 as the EXACT articulated couture mannequin blueprint (preserve its matte beige-linen torso, articulated atelier arms, sculpted legs on the circular floor plinth, front camera angle, and warm cream studio backdrop).
 
-Execute a two-stage 1:1 garment shape normalization and fashion-theory styling assembly:
+Execute a strict two-stage 1:1 garment shape normalization and physical z-layer garment assembly:
 
-STAGE 1 — 1:1 GARMENT & ACCESSORY SHAPE NORMALIZATION:
-Extract every listed item (${selected.length} items total) from the reference images/boards. Strip away any human body, hands, hangers, or background from source photos, locking each item's exact 1:1 silhouette, neckline, sleeve/leg cut, fabric texture, and color shade:
+STAGE 1 — 1:1 IMMUTABLE GARMENT SHAPE & HEMLINE EXTRACTION:
+Extract every listed item (${selected.length} items total) from the reference images/boards. Strip away any human body, hands, hangers, or background from source photos while locking 100% of each item's exact photographed silhouette, neckline, collar, closure state, sleeve/leg length, bottom hemline contour, fabric texture, and color:
 ${normalizedBlock}
 
-STAGE 2 — COUTURE STYLING & MULTI-ACCESSORY ASSEMBLY (RULE OF THIRDS 1:2 & VOLUME BALANCE):
-Dress ALL ${selected.length} normalized items from Stage 1 onto the articulated mannequin from Reference Image #1:
-- Fashion Styling Technique: ${stylingPlan.singleInstruction}.
-- Every single listed item (${selected.map(s => s.it.name).join(', ')}) MUST be clearly visible in its designated anatomical zone.
-- Trousers/shorts/skirts must drape naturally over the mannequin's sculpted hips and legs; sleeves must follow the articulated arms with natural fabric folds.
-- Keep faceless matte-linen couture mannequin (NO human face, NO real skin, NO hair, NO unrequested items).`;
+STAGE 2 — STRICT PHYSICAL Z-LAYER ASSEMBLY ON THE MANNEQUIN (DO NOT DEFORM GARMENTS OR INVENT MISSING CLOTHES):
+Assemble ALL ${selected.length} normalized items from Stage 1 directly onto the mannequin from Reference Image #1 according to real physical wearing order (z=1 lower body -> z=2 upper top with natural exterior hem overlap -> z=3 outer layer -> z=4 waist/head/side accessories):
+- ${stylingPlan.singleInstruction}
+- CRITICAL PHYSICAL FIDELITY: Every selected item (${selected.map(s => s.it.name).join(', ')}) must retain 100% of its original photographed shape and hemline. Do NOT tie fake knots, do NOT roll sleeves, do NOT stuff untucked tops inside pants, and do NOT invent any unrequested clothing on bare mannequin zones. Keep faceless matte-linen couture mannequin.`;
 
       const dataUrl = await callMuseImage(prompt, refImages, elapsed => {
         stage.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>${
