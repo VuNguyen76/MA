@@ -1489,172 +1489,118 @@ if ($('aiAutoTagBtn')) {
   };
 }
 
-// 11B. Hệ thống Ma-nơ-canh Linh Hoạt (Adaptive Couture Mannequin 1024x1024) & Động cơ Tư Duy Thời Trang (Fashion Book Styling Engine)
+// 11B. Hệ thống Ma-nơ-canh Chuẩn Số Đo & Gu Tối Giản Hàn–Nhật (Petite Asian Boutique Dressmaker Form: Vai 35cm - Eo 58cm tỉ lệ 0.62 - Lưng:Chân 1:2.3 - Cổ kem phẳng - Chân gỗ sồi sáng 3 chạc)
 function drawCoutureMannequinFigure(ctx, cx, scale, opts = {}) {
   ctx.save();
-  ctx.translate(cx, opts.topY || 70);
+  ctx.translate(cx, opts.topY || 0);
   ctx.scale(scale, scale);
 
   const hasHeadCrown = !!opts.hasHeadCrown;
-  const pose = opts.pose || 'editorial_left';
 
-  // 1. Bóng đổ sàn & Bệ đứng đá Travertine / Gỗ sồi tối giản (không dùng cọc giữa háng để quần ống rộng/short vào phom chuẩn 3D)
-  const floorShadow = ctx.createRadialGradient(0, 865, 12, 0, 865, 165);
-  floorShadow.addColorStop(0, 'rgba(52, 42, 30, 0.22)');
-  floorShadow.addColorStop(1, 'rgba(52, 42, 30, 0)');
+  // 1. Bóng tiếp đất cực nhẹ dưới 3 chân gỗ
+  const floorShadow = ctx.createRadialGradient(0, 998, 8, 0, 998, 135);
+  floorShadow.addColorStop(0, 'rgba(60, 50, 38, 0.10)');
+  floorShadow.addColorStop(1, 'rgba(60, 50, 38, 0)');
   ctx.fillStyle = floorShadow;
   ctx.beginPath();
-  ctx.ellipse(0, 865, 165, 24, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 998, 135, 14, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Đế tròn bảo tàng (Museum Plinth) + Trụ đỡ lệch phía sau bắp chân
-  const plinthGrad = ctx.createLinearGradient(-115, 835, 115, 875);
-  plinthGrad.addColorStop(0, '#D8CFC2');
-  plinthGrad.addColorStop(0.5, '#EFEAE1');
-  plinthGrad.addColorStop(1, '#B8AC9B');
-  ctx.fillStyle = plinthGrad;
+  // 2. Trụ giữa thanh mảnh & Chân đế 3 chạc gỗ sồi sáng uốn cong ở đáy (đúng chuẩn ảnh mẫu 8% đáy khung hình)
+  const oakGrad = ctx.createLinearGradient(-90, 900, 90, 1005);
+  oakGrad.addColorStop(0, '#AE8B63');
+  oakGrad.addColorStop(0.48, '#CBB08C');
+  oakGrad.addColorStop(1, '#9A7852');
+
+  // Trụ dọc gỗ sáng mảnh (chỉ đỡ dưới đáy thân ma-nơ-canh)
+  ctx.fillStyle = oakGrad;
+  ctx.fillRect(-10, 510, 20, 488);
+
+  // Khối trụ tiện gỗ nơi giao 3 chạc chân
   ctx.beginPath();
-  ctx.ellipse(0, 854, 112, 18, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(120, 102, 82, 0.35)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  // Chất liệu vải Linen / Bisque cao cấp của ma-nơ-canh nhà mốt
-  const linenGrad = ctx.createLinearGradient(-145, 70, 145, 780);
-  linenGrad.addColorStop(0, '#F3ECE0');
-  linenGrad.addColorStop(0.45, '#E4D8C5');
-  linenGrad.addColorStop(0.85, '#CEBEA6');
-  linenGrad.addColorStop(1, '#BAA78D');
-
-  const limbGrad = ctx.createLinearGradient(-150, 120, 150, 820);
-  limbGrad.addColorStop(0, '#EDE4D5');
-  limbGrad.addColorStop(0.6, '#DACBB5');
-  limbGrad.addColorStop(1, '#C3B197');
-
-  const woodGrad = ctx.createLinearGradient(-28, 0, 28, 0);
-  woodGrad.addColorStop(0, '#9E7347');
-  woodGrad.addColorStop(0.5, '#C89F70');
-  woodGrad.addColorStop(1, '#845C33');
-
-  // 2. Đôi chân điêu khắc chuẩn tỉ lệ 1:2 (giúp quần tây, quần ống rộng, quần short và chân váy rủ tự nhiên)
-  ctx.fillStyle = limbGrad;
-  // Chân trái
-  ctx.beginPath();
-  ctx.moveTo(-78, 430);
-  ctx.bezierCurveTo(-86, 540, -76, 650, -56, 838);
-  ctx.lineTo(-24, 838);
-  ctx.bezierCurveTo(-20, 660, -14, 545, -10, 442);
-  ctx.closePath();
+  ctx.roundRect(-22, 926, 44, 46, 8);
   ctx.fill();
 
-  // Chân phải (dáng đứng contrapposto thanh thoát)
-  const rightLegShift = pose === 'contrapposto_right' ? 14 : 6;
-  ctx.beginPath();
-  ctx.moveTo(10, 442);
-  ctx.bezierCurveTo(16, 545, 22 + rightLegShift * 0.4, 660, 26 + rightLegShift, 838);
-  ctx.lineTo(58 + rightLegShift, 838);
-  ctx.bezierCurveTo(78 + rightLegShift * 0.5, 650, 86, 540, 78, 430);
-  ctx.closePath();
-  ctx.fill();
-
-  // 3. Tay khớp gỗ/linen linh hoạt (Articulated Atelier Arms) giúp tay áo sơ mi, blazer, áo trễ vai và quai túi vào phom thật
-  ctx.strokeStyle = '#D5C4AC';
+  // Hai chạc gỗ sồi uốn cong chữ S mềm mại sang hai bên
+  ctx.strokeStyle = oakGrad;
+  ctx.lineWidth = 22;
   ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  // Cánh tay trái
-  ctx.lineWidth = 28;
   ctx.beginPath();
-  if (pose === 'contrapposto_right') {
-    // Tay trái hơi chống nhẹ gần hông tạo độ mở cho áo khoác/sơ mi
-    ctx.moveTo(-118, 148);
-    ctx.quadraticCurveTo(-156, 255, -112, 355);
-  } else {
-    // Tay trái buông tự nhiên dọc thân
-    ctx.moveTo(-118, 148);
-    ctx.quadraticCurveTo(-142, 265, -126, 395);
-  }
+  ctx.moveTo(-12, 934);
+  ctx.bezierCurveTo(-36, 950, -52, 988, -96, 1006);
+  ctx.moveTo(12, 934);
+  ctx.bezierCurveTo(36, 950, 52, 988, 96, 1006);
   ctx.stroke();
 
-  // Cánh tay phải
-  ctx.beginPath();
-  if (pose === 'editorial_left') {
-    // Cẳng tay phải hơi nâng nhẹ tạo điểm treo túi hoặc khoe tay áo xắn
-    ctx.moveTo(118, 148);
-    ctx.quadraticCurveTo(154, 252, 114, 348);
-  } else {
-    ctx.moveTo(118, 148);
-    ctx.quadraticCurveTo(142, 265, 126, 395);
-  }
-  ctx.stroke();
+  // 3. Chất liệu vải nỉ/linen trắng kem mịn đồng tông nền (#ECE9E2 -> #DBD6CC), KHÔNG có chóp gỗ nâu trên cổ, KHÔNG có tay khớp gỗ
+  const fabricGrad = ctx.createLinearGradient(-130, 30, 130, 520);
+  fabricGrad.addColorStop(0, '#F1EFEA');
+  fabricGrad.addColorStop(0.45, '#E8E4DC');
+  fabricGrad.addColorStop(0.85, '#DCD7CD');
+  fabricGrad.addColorStop(1, '#CFC9BE');
 
-  // Khớp cầu vai gỗ sồi của ma-nơ-canh thiết kế
-  ctx.fillStyle = woodGrad;
-  ctx.beginPath();
-  ctx.arc(-118, 148, 15, 0, Math.PI * 2);
-  ctx.arc(118, 148, 15, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 4. Đầu / Cổ linh hoạt (Có vòm đầu điêu khắc không mặt khi đội Nón/Kính, hoặc chóp gỗ Couture khi không đội nón)
   if (hasHeadCrown) {
-    // Cổ thanh mảnh + Vòm đầu điêu khắc không mặt bọc vải linen để đội nón kết/mũ chuẩn góc
-    ctx.fillStyle = linenGrad;
-    ctx.fillRect(-21, 56, 42, 46);
+    // Khi có Nón/Kính: Vòm đầu điêu khắc không mặt bọc cùng chất vải kem sáng (không dùng gỗ nâu)
+    ctx.fillStyle = fabricGrad;
+    ctx.fillRect(-30, 56, 60, 54);
     ctx.beginPath();
-    ctx.ellipse(0, 18, 44, 56, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 26, 42, 50, 0, 0, Math.PI * 2);
     ctx.fill();
   } else {
-    // Cổ linen + Chóp gỗ sồi tiện tròn chuẩn Haute Couture
-    ctx.fillStyle = linenGrad;
-    ctx.fillRect(-22, 68, 44, 34);
-    ctx.fillStyle = woodGrad;
+    // Cổ trụ bọc vải kem cắt phẳng đỉnh đầu tối giản (đúng chuẩn ảnh mẫu khách ưng nhất)
+    ctx.fillStyle = fabricGrad;
     ctx.beginPath();
-    ctx.roundRect(-22, 42, 44, 30, 10);
+    ctx.moveTo(-31, 32);
+    ctx.quadraticCurveTo(-33, 76, -46, 98);
+    ctx.lineTo(46, 98);
+    ctx.quadraticCurveTo(33, 76, 31, 32);
+    ctx.closePath();
     ctx.fill();
+
+    // Mặt cắt phẳng đỉnh cổ màu kem sáng
+    ctx.fillStyle = '#E3DFD6';
     ctx.beginPath();
-    ctx.ellipse(0, 40, 17, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 32, 31, 7, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 5. Thân Ma-nơ-canh chuẩn tỉ lệ Vàng 1/3 - 2/3 (Cầu vai 38 - Eo 1/3 tại y=292 - Hông 445)
-  ctx.fillStyle = linenGrad;
+  // 4. Thân Ma-nơ-canh Petite Asian Hourglass (Vai nhỏ 256px - Eo siêu thon 158px tại y=356 [tỉ lệ 0.62] - Hông chữ A mềm 222px)
+  ctx.fillStyle = fabricGrad;
   ctx.beginPath();
-  ctx.moveTo(-23, 94); // Chân cổ trái
-  ctx.quadraticCurveTo(-35, 116, -110, 130); // Cầu vai trái
-  ctx.quadraticCurveTo(-128, 136, -122, 164); // Đỉnh vai trái
-  ctx.bezierCurveTo(-110, 215, -90, 245, -66, 292); // Ngực thu về eo 1/3 trái
-  ctx.bezierCurveTo(-58, 314, -88, 360, -90, 412); // Eo mở ra hông trái
-  ctx.quadraticCurveTo(-86, 452, -38, 458); // Đáy hông trái
-  ctx.lineTo(38, 458); // Đáy hông phải
-  ctx.quadraticCurveTo(86, 452, 90, 412); // Hông phải
-  ctx.bezierCurveTo(88, 360, 58, 314, 66, 292); // Eo phải
-  ctx.bezierCurveTo(90, 245, 110, 215, 122, 164); // Ngực lên đỉnh vai phải
-  ctx.quadraticCurveTo(128, 136, 110, 130); // Cầu vai phải
-  ctx.quadraticCurveTo(35, 116, 23, 94); // Chân cổ phải
+  ctx.moveTo(-44, 94); // Chân cổ trái
+  ctx.quadraticCurveTo(-76, 114, -124, 128); // Cầu vai trái thanh mảnh
+  ctx.quadraticCurveTo(-132, 134, -128, 162); // Đầu vai trái không lộ khớp gỗ
+  ctx.bezierCurveTo(-118, 222, -104, 268, -79, 356); // Ngực thu gọn sắc nét về eo nhỏ 58-60cm (y=356)
+  ctx.bezierCurveTo(-74, 384, -108, 430, -111, 486); // Eo mở êm ra hông chữ A (222px)
+  ctx.quadraticCurveTo(-106, 522, -46, 526); // Đáy thân ma-nơ-canh trái
+  ctx.lineTo(46, 526); // Đáy thân ma-nơ-canh phải
+  ctx.quadraticCurveTo(106, 522, 111, 486); // Hông phải
+  ctx.bezierCurveTo(108, 430, 74, 384, 79, 356); // Eo phải (158px -> Waist/Shoulder = 0.617)
+  ctx.bezierCurveTo(104, 268, 118, 222, 128, 162); // Ngực lên đầu vai phải
+  ctx.quadraticCurveTo(132, 134, 124, 128); // Cầu vai phải
+  ctx.quadraticCurveTo(76, 114, 44, 94); // Chân cổ phải
   ctx.closePath();
   ctx.fill();
 
-  // Đường chỉ may công thái học & Đai eo Tỉ lệ vàng 1/3 (Waist Landmark)
-  ctx.strokeStyle = 'rgba(122, 102, 78, 0.34)';
-  ctx.lineWidth = 1.8;
+  // Đường chỉ may chìm cực mảnh định vị đúng điểm thắt eo cao 1 : 2.3 (y=356)
+  ctx.strokeStyle = 'rgba(145, 138, 126, 0.22)';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(0, 96);
-  ctx.lineTo(0, 456); // Trục giữa thân
-  ctx.moveTo(-68, 134);
-  ctx.bezierCurveTo(-56, 210, -44, 292, -52, 452); // Đường princess seam trái
-  ctx.moveTo(68, 134);
-  ctx.bezierCurveTo(56, 210, 44, 292, 52, 452); // Đường princess seam phải
-  ctx.moveTo(-66, 294);
-  ctx.quadraticCurveTo(0, 304, 66, 294); // Đai eo chuẩn 1/3
+  ctx.lineTo(0, 524);
+  ctx.moveTo(-72, 132);
+  ctx.bezierCurveTo(-60, 220, -46, 356, -56, 520);
+  ctx.moveTo(72, 132);
+  ctx.bezierCurveTo(60, 220, 46, 356, 56, 520);
+  ctx.moveTo(-79, 356);
+  ctx.quadraticCurveTo(0, 363, 79, 356);
   ctx.stroke();
 
-  // Nhãn chân đế (STYLE 01 / STYLE 02 khi ở chế độ 2 Style)
   if (opts.badge) {
-    ctx.fillStyle = '#1A3323';
-    ctx.font = 'bold 17px sans-serif';
+    ctx.fillStyle = '#3C4A3E';
+    ctx.font = '600 15px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(opts.badge, 0, 892);
+    ctx.fillText(opts.badge, 0, 1030);
   }
 
   ctx.restore();
@@ -1666,56 +1612,52 @@ function getAdaptiveMannequinDataUrl(selected, stylingPlan) {
   c.height = 1024;
   const ctx = c.getContext('2d');
 
-  // Phông studio kem ấm Haute Lookbook
-  const bg = ctx.createRadialGradient(512, 420, 80, 512, 512, 700);
-  bg.addColorStop(0, '#F8F5EF');
-  bg.addColorStop(1, '#EAE3D8');
+  // Phông studio trắng ngà phẳng mịn #F5F5F3 chuẩn Lookbook Hàn–Nhật (không viền tối vignette)
+  const bg = ctx.createLinearGradient(0, 0, 0, 1024);
+  bg.addColorStop(0, '#F6F6F4');
+  bg.addColorStop(1, '#F2F1EE');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 1024, 1024);
 
   const hasHeadCrown = selected.some(s => s.zone === 'HEAD');
 
   if (stylingPlan?.mode === 'DUAL_STYLE') {
-    // Vẽ 2 Ma-nơ-canh song song (STYLE 01 bên trái & STYLE 02 bên phải) để AI lên 2 cách phối/2 style rõ ràng
-    drawCoutureMannequinFigure(ctx, 282, 0.88, {
-      topY: 110,
+    drawCoutureMannequinFigure(ctx, 290, 0.88, {
+      topY: 56,
       hasHeadCrown,
-      pose: 'editorial_left',
       badge: 'STYLE 01'
     });
-    drawCoutureMannequinFigure(ctx, 742, 0.88, {
-      topY: 110,
+    drawCoutureMannequinFigure(ctx, 734, 0.88, {
+      topY: 56,
       hasHeadCrown,
-      pose: 'contrapposto_right',
       badge: 'STYLE 02'
     });
   } else {
-    drawCoutureMannequinFigure(ctx, 512, 0.96, {
-      topY: 74,
-      hasHeadCrown,
-      pose: 'editorial_left'
+    drawCoutureMannequinFigure(ctx, 512, 0.99, {
+      topY: 4,
+      hasHeadCrown
     });
   }
 
   return c.toDataURL('image/png');
 }
 
-// Mô tả quy tắc ghép vạt áo vật lý 1:1 (Physical Hemline & Z-Layer Overlap — KHÔNG tự ý nhét áo vào quần hay bẻ biến dạng phom gốc)
+// Mô tả quy tắc ghép vạt áo vật lý + giữ trọn tỉ lệ eo thon 0.62 & lưng ngắn chân dài 1 : 2.3
 function describePhysicalHemline(topPiece, lowerPiece) {
-  const { hemType, directive } = topPiece.profile;
+  const { role, hemType, directive } = topPiece.profile;
   const topName = `"${topPiece.it.name}"`;
   const lowerName = lowerPiece ? `"${lowerPiece.it.name}"` : null;
 
   if (hemType === 'CROPPED') {
-    return `${topName} is a cropped/bandeau piece: preserve 100% of its exact photographed cropped length so its bottom edge ends naturally at the ribcage/upper waist${lowerName ? `, right above or touching the top waistband of ${lowerName} without covering the pants` : ''}.`;
+    return `${topName} is a cropped/bandeau piece: preserve 100% of its exact photographed cropped length, tapering sleekly to the ultra-slim 58cm high waist so its bottom edge meets cleanly right at the top edge of ${lowerName || 'the high waist'} (30% upper torso : 70% lower body proportion).`;
   }
   if (hemType === 'SHAPED_WAIST_FLARE') {
-    return `${topName} has a structured peplum/wrap/babydoll hem: NEVER tuck it inside pants. Its flared/shaped bottom hem MUST sit on the exterior (z-layer 2) overlapping the top waistband${lowerName ? ` of ${lowerName}` : ''} with a clean 3D fabric edge.`;
+    return `${topName} has a structured peplum/wrap/babydoll hem: cinch snugly at the narrow 58cm high waist (0.62 waist-to-shoulder ratio) while keeping its flared/shaped hem and ties on the exterior overlapping ${lowerName ? `the top waistband of ${lowerName}` : 'the hip'} — NEVER stuff the flared hem inside pants.`;
   }
-  if (directive === 'FULL_TUCK' && lowerName) {
-    return `${topName} has an explicit tuck directive in user notes: tuck its bottom hem cleanly inside the high waistband of ${lowerName} while keeping its exact upper torso cut, collar, and sleeve length unchanged.`;
+  if ((directive === 'FULL_TUCK' || role === 'BASE_TOP') && lowerName) {
+    return `${topName}: fit sleekly to the petite bust and cinch cleanly into/at the 58cm high waistband of ${lowerName} to highlight the 0.62 waist-to-shoulder ratio and 1:2.3 leg-lengthening proportion.`;
   }
-  return `STRICT 1:1 UNTUCKED PHYSICAL OVERLAP FOR ${topName}: Keep ${topName} 100% UNTUCKED in its exact original photographed shape, length, closure, sleeve cut, and bottom hemline. Its bottom hem MUST hang naturally OUTSIDE and OVER ${lowerName ? `the top waistband of ${lowerName} (overlapping the top ~5-8cm of the waistband on the exterior z-layer with a clear fabric hem edge and subtle contact shadow — NEVER stuff or tuck it inside ${lowerName} and NEVER merge them into a one-piece jumpsuit)` : 'the bare beige-linen mannequin waist'}. Do NOT tie knots, do NOT roll sleeves, and do NOT unbutton closed plackets.`;
+  return `1:1 PETITE-TAILORED UNTUCKED OVERLAP FOR ${topName}: Tailor ${topName} cleanly to the petite 35cm shoulders and slim 58cm torso while keeping it UNTUCKED in its exact photographed cut, closure, sleeve length, and bottom hemline. Its bottom hem hangs naturally outside and over ${lowerName ? `the top waistband of ${lowerName} with a clean fabric edge (do NOT stuff inside ${lowerName}, do NOT tie fake knots, do NOT roll sleeves)` : 'the slim off-white mannequin waist'}.`;
 }
 
 // Kiểm tra 2 món thân trên có thể ghép chồng vật lý trên CÙNG 1 Ma-nơ-canh mà không biến dạng & không che khuất 100% nhau hay không
@@ -1731,7 +1673,7 @@ function checkPhysicalStackability(u1, u2) {
       canStackOnOne: true,
       inner,
       outer,
-      assemblyRule: `Layer z=2 (Inner Base): Put "${inner.it.name}" onto the mannequin torso in its exact 1:1 photographed shape. Layer z=3 (Sheer Exterior Overlay): Layer the transparent/mesh "${outer.it.name}" directly OVER "${inner.it.name}" in its exact 1:1 cropped/mesh shape so "${inner.it.name}" remains clearly visible underneath and through the sheer fabric without altering either garment's cut.`
+      assemblyRule: `Layer z=2 (Inner Base): Fit "${inner.it.name}" sleekly onto the petite torso tapering to the narrow 58cm waist. Layer z=3 (Sheer Exterior Overlay): Layer the sheer/open-knit "${outer.it.name}" directly OVER "${inner.it.name}" in its exact 1:1 cropped silhouette — render realistic optical sheer knit transparency at the collarbones and slim hanging sleeves (allowing soft off-white studio light to pass through single-layer mesh while deepening tone over "${inner.it.name}").`
     };
   }
 
@@ -1745,7 +1687,7 @@ function checkPhysicalStackability(u1, u2) {
       canStackOnOne: true,
       inner,
       outer,
-      assemblyRule: `Layer z=2 (Inner Top): Dress the mannequin torso in "${inner.it.name}" keeping 100% of its photographed shape. Layer z=3 (Exterior Open Outerwear): Put "${outer.it.name}" onto the shoulders and articulated arms OVER "${inner.it.name}" with an open front so the center torso of "${inner.it.name}" is clearly visible between the lapels.`
+      assemblyRule: `Layer z=2 (Inner Top): Dress the petite torso in "${inner.it.name}" keeping 100% of its photographed shape. Layer z=3 (Exterior Open Outerwear): Drape "${outer.it.name}" cleanly onto the narrow 35cm shoulders OVER "${inner.it.name}" with an open front and slim natural vertical sleeves (NO visible mannequin arms or hands sticking out of cuffs).`
     };
   }
 
@@ -1760,7 +1702,7 @@ function checkPhysicalStackability(u1, u2) {
         canStackOnOne: true,
         inner,
         outer,
-        assemblyRule: `Layer z=2 (Inner Collared Shirt): Dress "${inner.it.name}" underneath. Layer z=3 (Exterior Pullover Sweater): Layer "${outer.it.name}" over the torso in its exact 1:1 boxy pullover shape, allowing ONLY the collar of "${inner.it.name}" to peek out cleanly at the neck opening and the bottom hem of "${inner.it.name}" to peek out ~3cm below the sweater hem.`
+        assemblyRule: `Layer z=2 (Inner Collared Shirt): Dress "${inner.it.name}" underneath. Layer z=3 (Exterior Pullover Sweater): Layer "${outer.it.name}" over the petite torso with slim natural vertical sleeves, allowing ONLY the collar of "${inner.it.name}" to peek out cleanly at the neck opening and the bottom hem of "${inner.it.name}" to peek out ~3cm below the sweater hem.`
       };
     }
   }
@@ -1773,15 +1715,15 @@ function buildMannequinPhysicalStackInstruction(label, upperItems, lowerPiece, d
   const steps = [];
 
   if (dressPiece) {
-    steps.push(`Layer z=1 (Full-Body Dress): Fit "${dressPiece.it.name}" onto the mannequin torso, waist, and hips in its exact 1:1 photographed length and neckline.`);
+    steps.push(`Layer z=1 (Full-Body Dress): Fit "${dressPiece.it.name}" onto the petite 35cm shoulders and ultra-slim 58cm waist (0.62 waist-to-shoulder ratio), draping vertically with soft natural folds above the curved light-oak 3-legged tripod stand.`);
   } else if (lowerPiece) {
-    steps.push(`Layer z=1 (Lower Body Base): Fit "${lowerPiece.it.name}" onto the mannequin waist, hips, and sculpted legs in its exact 1:1 photographed cut, rise, and leg width.`);
+    steps.push(`Layer z=1 (High-Waisted Lower Body, 70% vertical proportion): Fit "${lowerPiece.it.name}" snugly at the narrowest 58cm high waist (0.62 waist-to-shoulder ratio), opening gently over the hip (1.39 hip-to-waist ratio) and hanging straight down with soft vertical fabric pleats/drape — NO stiff mannequin legs inside, only the curved light-oak 3-legged wooden tripod stand peeking cleanly underneath the bottom hem.`);
   } else {
-    steps.push('NO LOWER GARMENT SELECTED: Leave the mannequin lower beige-linen hips and sculpted legs completely BARE and undressed below the top hem. Do NOT invent or add any pants, jeans, shorts, or skirt.');
+    steps.push('NO LOWER GARMENT SELECTED: Leave the lower off-white fabric dressmaker hip form and slim light-oak wooden tripod stand completely BARE below the top hem. Do NOT invent or add any pants, jeans, shorts, or skirt.');
   }
 
   if (upperItems.length === 0 && !dressPiece) {
-    steps.push('NO UPPER GARMENT SELECTED: Leave the mannequin upper beige-linen chest, shoulders, and articulated arms completely BARE and undressed above the waistband. Do NOT invent or add any shirt or top.');
+    steps.push('NO UPPER GARMENT SELECTED: Leave the upper matte off-white fabric dressmaker torso and flat-capped neck completely BARE above the waistband (NO mannequin arms). Do NOT invent or add any shirt or top.');
   } else if (customLayerRule) {
     steps.push(customLayerRule);
     for (const u of upperItems) {
@@ -1789,7 +1731,7 @@ function buildMannequinPhysicalStackInstruction(label, upperItems, lowerPiece, d
     }
   } else {
     upperItems.forEach((u, idx) => {
-      steps.push(`Layer z=${idx + 2} (Upper Body): Assemble "${u.it.name}" onto the mannequin torso and articulated arms in its exact 1:1 photographed shape. ${describePhysicalHemline(u, lowerPiece || dressPiece)}`);
+      steps.push(`Layer z=${idx + 2} (Upper Body, 30% compact torso proportion): Dress "${u.it.name}" onto the petite 35cm shoulders and slim 58cm waist in its exact 1:1 photographed shape, with sleeves hanging slim and naturally filled straight down along the sides ending in clean empty cuffs (NO visible mannequin arms, NO wooden joints, NO hands). ${describePhysicalHemline(u, lowerPiece || dressPiece)}`);
     });
   }
 
@@ -1798,17 +1740,17 @@ function buildMannequinPhysicalStackInstruction(label, upperItems, lowerPiece, d
   for (const acc of accessories) {
     if (acc.profile.role === 'FAKE_COLLAR') {
       if (!hasCollaredUpper && (upperItems.length > 0 || dressPiece)) {
-        steps.push(`Layer z=1.5 (Inner Neckline Collar): Tuck "${acc.it.name}" inside the collarless neckline so only its crisp shirt collar points peek out naturally at the neck.`);
+        steps.push(`Layer z=1.5 (Inner Neckline Collar): Tuck "${acc.it.name}" inside the collarless neckline so only its crisp shirt collar points peek out naturally against the matte off-white neck.`);
       } else {
-        steps.push(`Accessory "${acc.it.name}": Display neatly beside the mannequin plinth (do not stack a second collar onto an already-collared shirt).`);
+        steps.push(`Accessory "${acc.it.name}": Display neatly beside the wooden tripod base (do not stack a second collar onto an already-collared shirt).`);
       }
     } else if (acc.profile.role === 'CORSET_BELT') {
-      steps.push(`Layer z=4 (Exterior Waist Cincher): Fasten "${acc.it.name}" snugly around the narrowest natural waist ON THE EXTERIOR OVER the top/dress in its exact 1:1 shape.`);
+      steps.push(`Layer z=4 (Exterior Waist Cincher): Fasten "${acc.it.name}" snugly around the narrowest 58cm high waist ON THE EXTERIOR OVER the top/dress in its exact 1:1 shape.`);
     }
   }
 
   if (footwearPiece) {
-    steps.push(`Footwear: Place "${footwearPiece.it.name}" cleanly at the mannequin ankles on the studio plinth.`);
+    steps.push(`Footwear: Place "${footwearPiece.it.name}" neatly beside/in front of the curved light-oak tripod feet at the bottom.`);
   }
 
   return `${label}: ${steps.join(' ')}`;
@@ -2134,14 +2076,14 @@ if ($('aiGenerateBtn')) {
       const refImages = await buildAiReferenceBoards(selected, stylingPlan);
 
       const zonePlacementGuide = {
-        HEAD: 'Fit naturally onto the sculpted faceless mannequin head crown at an editorial angle',
-        NECK: 'Drape or fasten cleanly around the mannequin neck/collarbone',
-        UPPER: 'Dress onto the mannequin upper torso and articulated arms with realistic sleeve drape',
-        DRESS: 'Dress full-length onto the mannequin torso draping naturally over hips and legs',
-        WAIST: 'Fasten securely around the narrowest 1/3 natural waist point OVER the top/dress',
-        LOWER: 'Fit onto the mannequin high waist, hips, and sculpted legs with authentic trouser/skirt drape (no pole blocking the legs)',
-        FOOT: 'Place cleanly on/at the mannequin ankles on the studio plinth',
-        SIDE: 'Hang naturally from the articulated forearm/shoulder or display on the plinth beside the mannequin'
+        HEAD: 'Fit naturally onto the matte off-white faceless head dome',
+        NECK: 'Drape or fasten cleanly around the matte off-white mannequin neck/collarbone',
+        UPPER: 'Dress onto the petite 35cm shoulders and slim 58cm waist; sleeves hang slim and naturally filled straight down along the sides with clean empty cuffs (NO visible mannequin arms or wooden joints)',
+        DRESS: 'Dress full-length onto the petite torso (0.62 waist-to-shoulder ratio) draping vertically above the curved light-oak 3-legged tripod stand',
+        WAIST: 'Fasten snugly around the narrowest 58cm high waist point OVER the top/dress',
+        LOWER: 'Fit snugly at the 58cm high waist (30% upper torso : 70% lower body ratio) and drape straight down with natural vertical pleats/gravity above the curved light-oak 3-legged wooden tripod stand (NO mannequin legs)',
+        FOOT: 'Place neatly beside the curved light-oak tripod feet at the bottom',
+        SIDE: 'Hang cleanly from the shoulder strap or display neatly beside the wooden tripod base'
       };
 
       const normalizedBlock = selected
@@ -2149,32 +2091,32 @@ if ($('aiGenerateBtn')) {
         .join('\n');
 
       const prompt = isDual
-        ? `Use Reference Image #1 as the EXACT Twin-Mannequin studio blueprint (TWO sculpted beige-linen articulated couture mannequins standing side-by-side on circular plinths labeled STYLE 01 on the left and STYLE 02 on the right, against the warm cream studio backdrop).
+        ? `Use Reference Image #1 as the EXACT Twin-Mannequin Japanese/Korean boutique studio blueprint: TWO armless headless matte off-white fabric dressmaker mannequins (flat-capped off-white fabric necks with NO brown wooden neck knobs, petite 35cm shoulders, ultra-slim 58cm high waists with 0.62 waist-to-shoulder ratio, 1:2.3 short-torso-to-long-lower-body proportion, and curved light-oak 3-legged wooden tripod stands peeking cleanly at the bottom 8% of the frame, labeled STYLE 01 on the left and STYLE 02 on the right) against a clean flat #F5F5F3 off-white studio background with soft diffused front lighting and no vignette.
 
-Execute a strict two-stage 1:1 garment shape normalization and physical z-layer garment assembly:
+Execute a strict two-stage 1:1 garment shape normalization and petite-proportioned physical z-layer assembly:
 
-STAGE 1 — 1:1 IMMUTABLE GARMENT SHAPE & HEMLINE EXTRACTION:
-Extract every item (${selected.length} items total) from the reference boards. Remove any human body, hands, hangers, or background from source photos while locking 100% of each item's exact photographed silhouette, neckline, collar, closure state, sleeve/leg length, bottom hemline contour, fabric texture, and color:
+STAGE 1 — 1:1 IMMUTABLE GARMENT SHAPE & TEXTURE EXTRACTION:
+Extract every item (${selected.length} items total) from the reference boards. Remove any human body, hands, hangers, or background from source photos while locking 100% of each item's exact photographed silhouette, neckline, collar, closure state, sleeve/leg length, bottom hemline contour, sheer/opaque knit texture, and color:
 ${normalizedBlock}
 
-STAGE 2 — STRICT PHYSICAL Z-LAYER ASSEMBLY ON THE TWIN MANNEQUINS (DO NOT DEFORM GARMENTS OR INVENT MISSING CLOTHES):
-Assemble the extracted garments from Stage 1 directly onto the Twin Mannequins according to real physical wearing order (inner z-layer first, outer z-layer overlapping on top):
+STAGE 2 — STRICT PHYSICAL Z-LAYER ASSEMBLY ON THE TWIN PETITE BOUTIQUE MANNEQUINS:
+Assemble the extracted garments from Stage 1 onto the Twin Mannequins preserving the slender petite Asian hourglass silhouette (0.62 waist-to-shoulder ratio, 30% upper torso : 70% lower body):
 - ${stylingPlan.style1.instruction} (Reference Image #2: STYLE 01 OUTFIT).
 - ${stylingPlan.style2.instruction} (Reference Image #3: STYLE 02 OUTFIT).
 ${stylingPlan.accessories.length ? `- Shared Accessories: Position ${stylingPlan.accessories.map(a => `"${a.it.name}" [${a.zone}]`).join(', ')} accurately in their physical zones.` : ''}
-- CRITICAL PHYSICAL FIDELITY: Do NOT modify any garment's cut, do NOT tie fake knots, do NOT roll sleeves, do NOT stuff untucked tops inside pants, and do NOT invent any unrequested clothing on bare mannequin zones. Keep faceless matte-linen couture mannequins.`
-        : `Use Reference Image #1 as the EXACT articulated couture mannequin blueprint (preserve its matte beige-linen torso, articulated atelier arms, sculpted legs on the circular floor plinth, front camera angle, and warm cream studio backdrop).
+- CRITICAL MANNEQUIN & GARMENT RULES: NO visible mannequin arms, NO wooden ball-joints, NO hands, NO mannequin legs, NO brown wooden neck cap. Sleeves hang slim and naturally filled straight down along the sides with empty cuffs; bottoms drape straight down with natural vertical folds above the curved light-oak 3-legged wooden tripod feet.`
+        : `Use Reference Image #1 as the EXACT Japanese/Korean minimalist boutique dressmaker mannequin blueprint: armless headless matte off-white fabric torso with a flat minimal off-white fabric neck cap (NO brown wooden neck knob), petite narrow 35cm shoulders, ultra-cinched 58cm high waist (0.62 waist-to-shoulder width ratio), 30% upper-torso : 70% lower-body (1:2.3) vertical proportion, and a curved light-oak 3-legged wooden tripod stand peeking cleanly at the bottom 8% of the frame, against a clean flat #F5F5F3 off-white studio background with soft diffused front lighting, generous ~68% negative space, and zero dark vignette.
 
-Execute a strict two-stage 1:1 garment shape normalization and physical z-layer garment assembly:
+Execute a strict two-stage 1:1 garment shape normalization and petite-proportioned physical z-layer assembly:
 
-STAGE 1 — 1:1 IMMUTABLE GARMENT SHAPE & HEMLINE EXTRACTION:
-Extract every listed item (${selected.length} items total) from the reference images/boards. Strip away any human body, hands, hangers, or background from source photos while locking 100% of each item's exact photographed silhouette, neckline, collar, closure state, sleeve/leg length, bottom hemline contour, fabric texture, and color:
+STAGE 1 — 1:1 IMMUTABLE GARMENT SHAPE & TEXTURE EXTRACTION:
+Extract every listed item (${selected.length} items total) from the reference images/boards. Strip away any human body, hands, hangers, or background from source photos while locking 100% of each item's exact photographed silhouette, neckline, collar, closure state, sleeve/leg length, bottom hemline contour, sheer/opaque fabric texture, and color:
 ${normalizedBlock}
 
-STAGE 2 — STRICT PHYSICAL Z-LAYER ASSEMBLY ON THE MANNEQUIN (DO NOT DEFORM GARMENTS OR INVENT MISSING CLOTHES):
-Assemble ALL ${selected.length} normalized items from Stage 1 directly onto the mannequin from Reference Image #1 according to real physical wearing order (z=1 lower body -> z=2 upper top with natural exterior hem overlap -> z=3 outer layer -> z=4 waist/head/side accessories):
+STAGE 2 — STRICT PHYSICAL Z-LAYER ASSEMBLY ON THE PETITE BOUTIQUE MANNEQUIN:
+Assemble ALL ${selected.length} normalized items from Stage 1 onto the mannequin from Reference Image #1 preserving the slender petite Asian hourglass silhouette (0.62 waist-to-shoulder ratio, 1:2.3 torso-to-lower-body ratio, ~32% total horizontal frame width):
 - ${stylingPlan.singleInstruction}
-- CRITICAL PHYSICAL FIDELITY: Every selected item (${selected.map(s => s.it.name).join(', ')}) must retain 100% of its original photographed shape and hemline. Do NOT tie fake knots, do NOT roll sleeves, do NOT stuff untucked tops inside pants, and do NOT invent any unrequested clothing on bare mannequin zones. Keep faceless matte-linen couture mannequin.`;
+- CRITICAL MANNEQUIN & GARMENT RULES: Every selected item (${selected.map(s => s.it.name).join(', ')}) must retain 100% of its original photographed shape, texture, and hemline. NO visible mannequin arms, NO wooden ball-joints, NO hands, NO mannequin legs, NO brown wooden neck knob, and NO unrequested clothing on bare mannequin zones. Sleeves hang slim and naturally filled straight down beside the waist with clean empty cuffs; bottoms drape vertically with soft natural pleats above the curved light-oak 3-legged wooden tripod base.`;
 
       const dataUrl = await callMuseImage(prompt, refImages, elapsed => {
         stage.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px" aria-hidden="true"></i>${
